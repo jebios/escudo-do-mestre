@@ -1,0 +1,3207 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Escudo do Mestre — D&D 2024</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#3a4250">
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=IM+Fell+English:ital@0;1&family=Uncial+Antiqua&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --leather:#3a4250; --leather-deep:#282e39; --leather-line:#4e5767;
+    --parch:#eae5d9; --parch-dark:#d9d2c1; --parch-line:#a9a18d;
+    --ink:#2b2a24; --ink-soft:#57544a;
+    --gold:#a08d6c; --gold-soft:#cec19f;
+    --blood:#96524c; --heal:#5b7a58; --ally:#5b7a58; --hostile:#96524c; --neutralc:#8d825f;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--leather-deep);
+    background-image:radial-gradient(ellipse at 50% -10%, #2a394f77 0%, transparent 60%);
+    font-family:"IM Fell English","Palatino Linotype",Palatino,"Iowan Old Style",Georgia,serif;
+    color:var(--ink);
+    display:flex; flex-direction:column;
+    max-width:520px; margin:0 auto; min-height:100vh;
+  }
+  header{padding:14px 16px 10px; color:var(--parch); text-align:center; border-bottom:1px solid var(--leather-line);}
+  header h1{font-size:1.05rem; letter-spacing:.22em; text-transform:uppercase; font-weight:400; color:var(--gold-soft);}
+  header .sub{font-size:.72rem; letter-spacing:.12em; color:#8b93a3; margin-top:2px;}
+  #saveState{font-size:.68rem; color:#6d7686; margin-top:4px; min-height:1em;}
+  #saveState.ok{color:var(--gold-soft);}
+  nav{display:flex; flex-wrap:wrap; border-bottom:2px solid var(--gold); background:var(--leather);}
+  nav button{flex:1 1 33.33%; padding:11px 0 9px; background:none; border:none; cursor:pointer;
+    font-family:inherit; font-size:.72rem; letter-spacing:.06em; text-transform:uppercase; color:#7e8798;
+    border-bottom:1px solid var(--leather-line);}
+  nav button.on{color:var(--gold-soft); background:linear-gradient(#26303f,#1f2733);}
+  main{flex:1; overflow-y:auto; padding:14px 12px 90px;}
+  .tab{display:none;} .tab.on{display:block;}
+  .card{
+    background:var(--parch);
+    background-image:linear-gradient(160deg,#f1f1e6 0%,var(--parch) 45%,var(--parch-dark) 100%);
+    border:1px solid var(--parch-line); border-radius:6px; padding:14px; margin-bottom:14px;
+    position:relative; box-shadow:0 2px 8px #00000055;
+  }
+  .card::before,.card::after{content:""; position:absolute; width:14px; height:14px; border:2px solid var(--gold); opacity:.5;}
+  .card::before{top:5px; left:5px; border-right:none; border-bottom:none;}
+  .card::after{bottom:5px; right:5px; border-left:none; border-top:none;}
+  h2{font-size:.78rem; letter-spacing:.2em; text-transform:uppercase; color:var(--ink-soft);
+    border-bottom:1px solid var(--parch-line); padding-bottom:6px; margin-bottom:12px; text-align:center;}
+  h3{font-size:1.02rem;}
+  label{display:block; font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:3px;}
+  input[type=text],input[type=number],textarea,select{
+    width:100%; background:#fbfbf2; border:1px solid var(--parch-line); border-radius:4px;
+    padding:8px 9px; font-family:inherit; font-size:1rem; color:var(--ink);}
+  input:focus,textarea:focus,select:focus{outline:2px solid var(--gold-soft); outline-offset:1px;}
+  textarea{resize:vertical; min-height:70px; line-height:1.45;}
+  .row{display:grid; gap:10px; margin-bottom:10px;}
+  .r2{grid-template-columns:1fr 1fr;} .r3{grid-template-columns:1fr 1fr 1fr;}
+  .gbtn{padding:9px 16px; border-radius:6px; border:1px solid var(--gold); cursor:pointer;
+    background:var(--gold); color:#141a24; font-family:inherit; font-weight:700; font-size:.85rem;}
+  .gbtn.ghost{background:transparent; color:var(--ink-soft); border-color:var(--ink-soft);}
+  .danger{color:var(--blood) !important; border-color:var(--blood) !important;}
+  .add{width:100%; padding:10px; margin-top:4px; background:transparent; cursor:pointer;
+    border:1px dashed var(--ink-soft); border-radius:6px; color:var(--ink-soft);
+    font-family:inherit; font-size:.8rem; letter-spacing:.1em; text-transform:uppercase;}
+  .xbtn{border:none; background:transparent; color:var(--blood); font-size:1.2rem; cursor:pointer;}
+  .chev{border:none; background:transparent; cursor:pointer; color:var(--ink-soft); font-size:1rem; padding:2px 6px; transition:transform .18s;}
+  .chev.open{transform:rotate(90deg); color:var(--gold);}
+  .sendb{border:1px solid var(--gold); background:transparent; cursor:pointer; color:var(--gold);
+    font-size:.95rem; padding:1px 8px; border-radius:99px; line-height:1.4;}
+  .sendb.open{background:var(--gold); color:#141a24;}
+  .empty{text-align:center; color:#6f7565; font-size:.9rem; padding:26px 10px; font-style:italic;}
+  .cathead{
+    width:100%; display:flex; align-items:center; gap:10px; margin:4px 0 8px;
+    background:var(--leather); color:var(--gold-soft); border:1px solid var(--leather-line);
+    border-radius:6px; padding:10px 14px; cursor:pointer; font-family:inherit;
+    font-size:.78rem; letter-spacing:.15em; text-transform:uppercase;
+  }
+  .cathead span:first-child{flex:1; text-align:left;}
+  .cathead .cnt{background:var(--gold); color:#141a24; border-radius:99px; padding:1px 9px; font-weight:700; font-size:.72rem;}
+  .cathead .arr{transition:transform .18s;}
+  .cathead.open .arr{transform:rotate(90deg);}
+  .dt{font-size:.7rem; color:var(--ink-soft); letter-spacing:.08em;}
+  .searchbar{display:flex; gap:8px; margin-bottom:12px;}
+  .searchbar input{flex:1;}
+  .badge{font-size:.62rem; letter-spacing:.05em; border:1px solid var(--parch-line); border-radius:99px; padding:2px 8px; white-space:nowrap; text-transform:uppercase;}
+  .b-aliado{color:var(--ally); border-color:var(--ally);}
+  .b-hostil{color:var(--hostile); border-color:var(--hostile);}
+  .b-neutro{color:var(--neutralc); border-color:var(--neutralc);}
+  .toprow{display:flex; align-items:center; gap:8px;}
+  .toprow h3{flex:1;}
+  /* stat blocks de combate */
+  .pills{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:10px 0;}
+  .pill{text-align:center; background:#fbfbf2; border:1px solid var(--parch-line); border-radius:6px; padding:6px 2px;}
+  .pill .v{font-size:1.1rem; font-weight:700;}
+  .pill .k{font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft);}
+  .hpline{display:flex; align-items:center; gap:8px; margin:8px 0;}
+  .hpline .hpv{font-size:1.3rem; font-weight:700; min-width:80px; text-align:center;}
+  .hpline button{width:44px; padding:8px 0; font-size:1.1rem; font-weight:700; border-radius:6px; border:1px solid var(--parch-line); cursor:pointer; font-family:inherit;}
+  .btn-dmg{background:var(--blood); color:#f5e6dc;} .btn-heal{background:var(--heal); color:#e8f0e2;}
+  .hpline input{width:56px; text-align:center;}
+  .absrow{display:grid; grid-template-columns:repeat(6,1fr); gap:4px; margin:8px 0;}
+  .absrow .ab{text-align:center; background:#fbfbf2; border:1px solid var(--parch-line); border-radius:5px; padding:4px 1px;}
+  .absrow .ab .nm{font-size:.56rem; letter-spacing:.08em; color:var(--ink-soft); text-transform:uppercase;}
+  .absrow .ab input{border:none; background:transparent; width:100%; text-align:center; font-weight:700; font-size:.95rem; padding:1px 0;}
+  .absrow .ab .m{font-size:.7rem; color:var(--ink-soft);}
+  .atk{display:grid; grid-template-columns:1.4fr .7fr 1fr 30px; gap:6px; margin-bottom:6px;}
+  .atk input{padding:6px 6px; font-size:.9rem;}
+  /* economia */
+  .saldo{text-align:center; margin-bottom:10px;}
+  .saldo .v{font-size:2.2rem; font-weight:700;}
+  .saldo .v.neg{color:var(--blood);}
+  .saldo .k{font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-soft);}
+  .lanc{display:flex; align-items:baseline; gap:8px; padding:7px 2px; border-bottom:1px dotted var(--parch-line); font-size:.92rem;}
+  .lanc .d{flex:1;}
+  .lanc .val{font-weight:700; white-space:nowrap;}
+  .lanc .val.pos{color:var(--heal);} .lanc .val.neg{color:var(--blood);}
+  .lancadd{display:flex; gap:6px; margin-top:10px;}
+  .lancadd input.desc{flex:1;}
+  .lancadd input.num{width:84px; text-align:right;}
+  /* jogadores */
+  .hist{font-size:.78rem; color:var(--ink-soft); margin-top:8px; border-top:1px dotted var(--parch-line); padding-top:6px;}
+  .hist div{padding:1px 0;}
+  footer{position:fixed; bottom:0; left:0; right:0; max-width:520px; margin:0 auto;
+    background:var(--leather); border-top:1px solid var(--leather-line); padding:8px 14px; text-align:center;}
+  footer button{background:none; border:none; color:#6d7686; font-family:inherit;
+    font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; cursor:pointer; padding:6px 10px;}
+  footer button.export{color:#141a24; background:var(--gold); border-radius:6px; font-weight:700; padding:8px 12px;}
+  footer button.ghostgold{background:transparent; color:var(--gold-soft); border:1px solid var(--gold); font-weight:400; border-radius:6px; padding:8px 12px;}
+  footer .frow{display:flex; gap:8px; justify-content:center; margin-bottom:4px;}
+  /* ---------- alternador de modo ---------- */
+  #modeBtn{
+    position:absolute; top:12px; right:12px; cursor:pointer;
+    background:transparent; border:1px solid var(--leather-line); border-radius:6px;
+    color:var(--gold-soft); font-family:inherit; font-size:.66rem;
+    letter-spacing:.08em; text-transform:uppercase; padding:6px 10px;
+  }
+  header{position:relative;}
+  /* ---------- MODO DESKTOP ---------- */
+  body.desktop{max-width:1140px;}
+  body.desktop footer{max-width:1140px;}
+  body.desktop main{padding:20px 24px 100px;}
+  body.desktop nav button{flex:1 1 0; border-bottom:none; font-size:.78rem;}
+  body.desktop #npcList,
+  body.desktop #monList,
+  body.desktop #histList,
+  body.desktop #playerList,
+  body.desktop #itemList{
+    display:grid; grid-template-columns:repeat(auto-fill, minmax(330px, 1fr));
+    gap:14px; align-items:start;
+  }
+  body.desktop #npcList .card,
+  body.desktop #monList .card,
+  body.desktop #histList .card,
+  body.desktop #playerList .card,
+  body.desktop #itemList .card{margin-bottom:0;}
+  body.desktop #itemList .cathead{grid-column:1 / -1; margin:6px 0 0;}
+  body.desktop .empty{grid-column:1 / -1;}
+  body.desktop #eco.on{display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start;}
+  body.desktop #eco .card{margin-bottom:0;}
+  body.desktop #eco .card:last-child{grid-column:1 / -1;}
+  body.desktop #players > .card{max-width:700px; margin-left:auto; margin-right:auto;}
+  /* ---------- pop-ups (só no modo desktop) ---------- */
+  .popbtn{display:none; border:1px solid var(--ink-soft); background:transparent; cursor:pointer;
+    color:var(--ink-soft); font-size:.85rem; padding:1px 7px; border-radius:4px; line-height:1.4;}
+  body.desktop .popbtn{display:inline-block;}
+  #popLayer{display:none;}
+  body.desktop #popLayer{display:block;}
+  .popup{
+    position:fixed; width:330px; max-height:70vh; overflow-y:auto; z-index:500;
+    background:var(--parch);
+    background-image:linear-gradient(160deg,#f1f1e6 0%,var(--parch) 45%,var(--parch-dark) 100%);
+    border:1px solid var(--gold); border-radius:8px; box-shadow:0 8px 26px #000000aa;
+    color:var(--ink);
+  }
+  .popup .phead{
+    display:flex; align-items:center; gap:8px; padding:8px 12px; cursor:grab;
+    background:var(--leather); color:var(--gold-soft); border-radius:8px 8px 0 0;
+    font-size:.8rem; letter-spacing:.1em; text-transform:uppercase; user-select:none;
+    position:sticky; top:0;
+  }
+  .popup .phead:active{cursor:grabbing;}
+  .popup .phead span{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .popup .phead .pclose{border:none; background:transparent; color:var(--gold-soft);
+    font-size:1rem; cursor:pointer; padding:0 2px;}
+  .popup .phead .pexp{border:none; background:transparent; color:var(--gold-soft);
+    font-size:1rem; cursor:pointer; padding:0 4px;}
+  .popup.exp{width:440px; max-height:82vh;}
+  .popup .pbody{padding:12px;}
+  .popup .pbody .pills{grid-template-columns:repeat(4,1fr);}
+  .popup .pbody p{font-size:.88rem; line-height:1.45; white-space:pre-wrap;}
+  #toastLayer{
+    position:fixed; top:14px; left:0; right:0; z-index:4000;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+    pointer-events:none; padding:0 14px;
+  }
+  .toast{
+    pointer-events:auto; cursor:pointer;
+    max-width:400px; width:100%;
+    background:linear-gradient(#434c5c,#323945); color:var(--parch);
+    border:1px solid var(--gold); border-radius:10px;
+    padding:10px 14px; box-shadow:0 8px 24px #000000aa;
+    animation:toastIn .25s ease-out;
+    display:flex; gap:10px; align-items:flex-start;
+    font-family:"IM Fell English",Palatino,serif;
+  }
+  .toast .ic{font-size:1.2rem; line-height:1;}
+  .toast b{color:var(--gold-soft); font-family:"Cinzel",Palatino,serif;}
+  .toast .tt{font-size:.88rem; line-height:1.3; word-break:break-word;}
+  .toast.out{animation:toastOut .25s ease-in forwards;}
+  @keyframes toastIn{from{opacity:0; transform:translateY(-14px);} to{opacity:1; transform:translateY(0);}}
+  @keyframes toastOut{from{opacity:1; transform:translateY(0);} to{opacity:0; transform:translateY(-14px);}}
+  /* ---------- anotações (pop-up) ---------- */
+  #notasModal{
+    position:fixed; z-index:3500; top:80px; right:16px;
+    width:360px; max-width:92vw; max-height:78vh; display:flex; flex-direction:column;
+    background:linear-gradient(160deg,#f3e8cd 0%,var(--parch) 45%,var(--parch-dark) 100%);
+    border:1px solid #8a6d3e; border-radius:8px;
+    box-shadow:0 12px 34px #00000099, inset 0 0 0 1px #ffffff55;
+    padding:14px; overflow:hidden;
+  }
+  .notashead{display:flex; align-items:center; gap:8px; margin-bottom:10px; cursor:grab; touch-action:none;}
+  .notashead:active{cursor:grabbing;}
+  .notashead .xbtn{
+    width:32px; height:32px; border-radius:6px; border:1px solid var(--blood); color:var(--blood);
+    background:transparent; font-size:1.1rem; cursor:pointer; flex-shrink:0;
+  }
+  #notasListaWrap{ flex:1; overflow-y:auto; min-height:120px; }
+  .notaItem{
+    display:flex; align-items:center; gap:8px; padding:10px 8px; cursor:pointer;
+    border-bottom:1px dotted var(--parch-line);
+  }
+  .notaItem .ni-tx{ flex:1; min-width:0; }
+  .notaItem .ni-t{ font-weight:700; color:var(--ink); }
+  .notaItem .ni-s{ font-size:.78rem; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #notaTituloInput{ font-size:1.1rem; padding:10px 11px; }
+  #notaTextoInput{ flex:1; min-height:240px; font-size:1.08rem; line-height:1.55; padding:11px 12px; }
+  #notasBtn.tem-nota{ box-shadow:0 0 0 2px var(--gold-soft) inset; }
+  /* ---------- biblioteca rápida ---------- */
+  .libbtn{
+    position:fixed; right:16px; bottom:74px; z-index:3300;
+    width:50px; height:50px; border-radius:50%;
+    background:linear-gradient(#434c5c,#323945); border:1px solid var(--gold);
+    color:var(--gold-soft); font-size:1.4rem; cursor:grab; touch-action:none;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 16px #000000aa;
+  }
+  .libbtn:active{ cursor:grabbing; }
+  #libPanel{
+    position:fixed; z-index:3300; width:340px; max-width:90vw; max-height:70vh;
+    display:flex; flex-direction:column; overflow:hidden;
+    background:linear-gradient(160deg,#f3e8cd 0%,var(--parch) 45%,var(--parch-dark) 100%);
+    border:1px solid #8a6d3e; border-radius:8px; padding:14px;
+    box-shadow:0 14px 36px #000000bb;
+  }
+  .libhead{display:flex; align-items:center; gap:8px; margin-bottom:8px; cursor:grab; touch-action:none;}
+  .libhead:active{cursor:grabbing;}
+  .libhead .xbtn{
+    width:30px; height:30px; border-radius:6px; border:1px solid var(--blood); color:var(--blood);
+    background:transparent; font-size:1rem; cursor:pointer; flex-shrink:0;
+  }
+  .libtabs{ display:flex; gap:6px; margin-bottom:8px; }
+  .libtabs button{
+    flex:1; padding:8px 0; border-radius:6px; border:1px solid var(--parch-line);
+    background:#f4f1e8; font-size:.82rem; cursor:pointer; color:var(--ink-soft);
+  }
+  .libtabs button.on{ border-color:var(--gold); color:var(--ink); font-weight:700; background:#fff9ec; }
+  #libLista{ flex:1; overflow-y:auto; margin-top:8px; }
+  .pdfitem{ display:flex; align-items:center; gap:8px; padding:8px 2px; border-bottom:1px dotted var(--parch-line); }
+  .pdfitem .pdfic{ font-size:1.3rem; }
+  .pdfitem .pdfnome{ flex:1; min-width:0; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .libcat{
+    font-size:.68rem; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft);
+    margin:10px 0 4px; font-weight:700;
+  }
+  .libitem{ padding:6px 2px; border-bottom:1px dotted var(--parch-line); }
+  .libitem b{ display:block; }
+  .libitem .libd{ font-size:.82rem; color:var(--ink-soft); line-height:1.35; margin-top:3px; }
+  /* ---------- barra de música ambiente ---------- */
+  .audiobar{
+    position:fixed; left:16px; bottom:14px; z-index:3300;
+    display:flex; align-items:center; gap:8px;
+    background:linear-gradient(#3a2c1a,#2b2015); border:1px solid var(--gold);
+    border-radius:30px; padding:7px 10px; box-shadow:0 6px 20px #000000aa;
+  }
+  #audioToggleBtn{
+    width:42px; height:42px; border-radius:50%; border:1px solid var(--gold);
+    background:transparent; color:var(--gold-soft); font-size:1.3rem; cursor:grab; flex-shrink:0;
+    touch-action:none;
+  }
+  #audioToggleBtn:active{ cursor:grabbing; }
+  #audioExpand{ display:flex; align-items:center; gap:6px; }
+  .abtn{
+    width:42px; height:42px; border-radius:50%; border:1px solid var(--parch-line);
+    background:#2b2015; color:var(--parch); font-size:1.2rem; cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .abtn.tem{ border-color:var(--gold); }
+  .abtn.playing{ border-color:var(--gold); box-shadow:0 0 0 3px #a5761f55; background:#4a3823; }
+  #audioStopBtn{
+    width:38px; height:38px; border-radius:50%; border:1px solid var(--blood); color:var(--blood);
+    background:transparent; font-size:1rem; cursor:pointer; flex-shrink:0;
+  }
+  #audioVol{ width:64px; }
+  #audioGerenciar{
+    position:fixed; inset:0; z-index:3600; display:flex; align-items:center; justify-content:center;
+    background:rgba(20,16,10,.55); padding:16px;
+  }
+  .afRow{
+    display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px dotted var(--parch-line);
+  }
+  .afRow .afic{ font-size:1.3rem; width:32px; text-align:center; }
+  .afRow .afnome{ flex:1; min-width:0; }
+  .afRow .aftit{ font-weight:700; }
+  .afRow .afarq{ font-size:.76rem; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* ---------- mapa ---------- */
+  .maptools{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;}
+  .mtbtn{
+    width:40px; height:40px; border-radius:8px; border:1px solid var(--parch-line);
+    background:#f4f1e8; font-size:1.2rem; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .mtbtn.on{border-color:var(--gold); box-shadow:0 0 0 2px var(--gold-soft) inset;}
+  .mtcores{display:flex; gap:5px; padding:0 4px;}
+  .mtcor{width:26px; height:26px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 1px var(--parch-line); cursor:pointer;}
+  .mtcor.on{box-shadow:0 0 0 2px var(--ink);}
+  #mapaCanvasWrap{
+    width:100%; border:1px solid var(--parch-line); border-radius:8px; overflow:hidden;
+    background:#20242c; touch-action:none;
+  }
+  #mapaCanvas{ display:block; width:100%; height:auto; cursor:crosshair; }
+  /* ---------- chat ---------- */
+  .chatwrap{display:flex; flex-direction:column; gap:7px; max-height:380px; overflow-y:auto; padding:2px;}
+  .cmsg{
+    background:#f2ede0; border:1px solid var(--parch-line); border-radius:10px;
+    padding:7px 10px; max-width:88%; align-self:flex-start;
+  }
+  .cmsg.eu{align-self:flex-end; background:#e9e2cd; border-color:var(--gold);}
+  .cmsg .who{font-size:.7rem; color:var(--ink-soft); display:flex; gap:8px; margin-bottom:2px;}
+  .cmsg .priv{color:var(--blood); font-weight:700;}
+  .cmsg .tx{font-size:.92rem; line-height:1.35; word-break:break-word;}
+  /* ---------- tela de bloqueio ---------- */
+  #lockScreen{
+    position:fixed; inset:0; z-index:3000;
+    background:var(--leather-deep);
+    background-image:radial-gradient(ellipse at 50% 30%, #4e576744 0%, transparent 60%);
+    display:flex; align-items:center; justify-content:center; padding:20px;
+  }
+  .lockbox{
+    width:100%; max-width:340px; text-align:center;
+    background:linear-gradient(#434c5c,#323945);
+    border:1px solid #99917d; border-radius:8px; padding:26px 22px;
+    box-shadow:0 12px 40px #000000cc, inset 0 0 0 1px #ffffff22;
+  }
+  .lockshield{font-size:2.4rem; margin-bottom:6px; filter:drop-shadow(0 2px 6px #000);}
+  .lockbox input{text-align:center; font-size:1.05rem;}
+  .lockbox .outra{
+    display:block; width:100%; margin-top:6px; padding:8px; cursor:pointer;
+    background:transparent; border:1px dashed #545e6f; border-radius:6px;
+    color:#a7aebc; font-family:"IM Fell English",Palatino,serif; font-size:.85rem;
+  }
+  /* ==================== APARÊNCIA MEDIEVAL ==================== */
+  body{
+    background:var(--leather-deep);
+    background-image:
+      radial-gradient(ellipse at 50% -8%, #a08d6c26 0%, transparent 55%),
+      radial-gradient(ellipse at 50% 108%, #00000088 0%, transparent 60%),
+      repeating-linear-gradient(90deg, #00000000 0 6px, #0000000d 6px 7px);
+  }
+  h2, nav button, .cathead, .popup .phead, .gbtn, footer button, #modeBtn{
+    font-family:"Cinzel","Palatino Linotype",Palatino,Georgia,serif;
+  }
+  header h1{
+    font-family:"Uncial Antiqua","Cinzel",Palatino,Georgia,serif;
+    font-size:1.35rem; letter-spacing:.1em; text-transform:none;
+  }
+  header .sub{font-family:"IM Fell English",Palatino,serif; font-style:italic; letter-spacing:.06em; text-transform:none;}
+  label{font-family:"Cinzel",Palatino,serif; letter-spacing:.08em;}
+  input[type=text],input[type=number],textarea,select{
+    font-family:"IM Fell English",Palatino,Georgia,serif;
+  }
+  header{border-bottom:none; padding-bottom:12px; position:relative;}
+  header::after{
+    content:""; position:absolute; left:8%; right:8%; bottom:0; height:2px;
+    background:linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-soft) 50%, var(--gold) 80%, transparent);
+  }
+  header h1::before{content:"⚜  "; color:var(--gold); font-size:.85em;}
+  header h1::after{content:"  ⚜"; color:var(--gold); font-size:.85em;}
+  nav{
+    border-bottom:none; position:relative;
+    background:linear-gradient(#434c5c,#323945);
+    box-shadow:inset 0 -1px 0 var(--leather-line), 0 3px 8px #00000066;
+  }
+  nav::after{
+    content:""; position:absolute; left:0; right:0; bottom:-2px; height:2px;
+    background:linear-gradient(90deg, transparent, var(--gold), transparent);
+  }
+  nav button{color:#8a7350; font-weight:500;}
+  nav button.on{
+    color:var(--gold-soft);
+    background:radial-gradient(ellipse at 50% 120%, #a08d6c3a 0%, transparent 70%);
+    text-shadow:0 0 12px #cec19f66;
+  }
+  .card{
+    background-image:
+      linear-gradient(160deg,#f1ede2 0%,var(--parch) 45%,var(--parch-dark) 100%),
+      none;
+    border:1px solid #99917d;
+    box-shadow:0 3px 10px #000000aa, inset 0 0 0 1px #ffffff55, inset 0 0 26px #a08d6c16;
+    border-radius:4px;
+  }
+  .card::before,.card::after{
+    width:18px; height:18px; border-width:2px; opacity:.75; border-color:var(--gold);
+  }
+  h2{
+    letter-spacing:.26em; color:#6b6553; border-bottom:none; position:relative; padding-bottom:9px;
+  }
+  h2::after{
+    content:""; position:absolute; left:12%; right:12%; bottom:0; height:1px;
+    background:linear-gradient(90deg, transparent, var(--parch-line), transparent);
+  }
+  h2::before{content:"❖  "; color:var(--gold); letter-spacing:0;}
+  input[type=text],input[type=number],textarea,select{
+    background:#f4f1e8; border-color:#b5ad99;
+    box-shadow:inset 0 1px 3px #a08d6c26;
+  }
+  .gbtn{
+    background:linear-gradient(#d3c6a4,#a8956f);
+    border:1px solid #6f6248; color:#26221a;
+    box-shadow:inset 0 1px 0 #ece2c8, 0 2px 4px #00000055;
+    letter-spacing:.06em;
+  }
+  .gbtn.ghost{background:transparent; box-shadow:none; color:var(--ink-soft); border-color:#99917d;}
+  .cathead{
+    background:linear-gradient(#434c5c,#343c49);
+    border:1px solid #545e6f;
+    box-shadow:inset 0 1px 0 #a08d6c26, 0 2px 5px #00000066;
+    color:var(--gold-soft);
+  }
+  .cathead .cnt{background:var(--gold-soft); color:#323945;}
+  .badge{background:#f1ede288;}
+  .pill,.absrow .ab{box-shadow:inset 0 1px 2px #a08d6c22;}
+  footer{
+    background:linear-gradient(#434c5c,#323945);
+    border-top:1px solid #545e6f;
+    box-shadow:0 -3px 10px #00000066;
+  }
+  .popup{
+    border:1px solid #99917d;
+    box-shadow:0 10px 30px #000000cc, inset 0 0 0 1px #ffffff44;
+  }
+  .popup .phead{
+    background:linear-gradient(#434c5c,#343c49);
+    letter-spacing:.14em;
+  }
+  #saveState.ok{color:var(--gold-soft);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Escudo do Mestre</h1>
+  <div class="sub">Campanha, NPCs &amp; Jogadores — D&amp;D 2024</div>
+  <div class="sub" id="campName" style="color:var(--gold-soft); margin-top:3px"></div>
+  <div id="saveState"></div>
+  <button id="modeBtn" onclick="toggleMode()" title="Alternar entre modo desktop e celular">🖥 desktop</button>
+</header>
+
+<nav>
+  <button id="tabNpcs" class="on" onclick="showTab('npcs')">NPCs</button>
+  <button id="tabCombate" onclick="showTab('combate')">Combate</button>
+  <button id="tabEco" onclick="showTab('eco')">Economia</button>
+  <button id="tabHist" onclick="showTab('hist')">História</button>
+  <button id="tabItens" onclick="showTab('itens')">Itens</button>
+  <button id="tabPlayers" onclick="showTab('players')">Jogadores</button>
+  <button id="tabChat" onclick="showTab('chat')">Chat</button>
+  <button id="tabMapa" onclick="showTab('mapa')">Mapa</button>
+  <button id="tabCamp" onclick="showTab('camp')">Campanhas</button>
+</nav>
+
+<main>
+<!-- ============ NPCS ============ -->
+<section id="npcs" class="tab on">
+  <div class="searchbar">
+    <input type="text" id="npcSearch" placeholder="Buscar NPC, local, papel..." oninput="renderNpcs()">
+    <button class="gbtn" onclick="addNpc()">Novo</button>
+  </div>
+  <div id="npcList"></div>
+</section>
+
+<!-- ============ COMBATE ============ -->
+<section id="combate" class="tab">
+  <button class="add" onclick="addMon()">+ nova ficha de combate</button>
+  <div id="monList" style="margin-top:12px"></div>
+</section>
+
+<!-- ============ ECONOMIA ============ -->
+<section id="eco" class="tab">
+  <div class="card">
+    <h2>Tesouro do Grupo</h2>
+    <div class="saldo"><div class="v" id="saldoV">0</div><div class="k">total em peças de ouro</div></div>
+    <div id="carteiras" class="pills" style="grid-template-columns:repeat(3,1fr)"></div>
+    <div id="lancList" style="margin-top:10px"></div>
+    <div class="lancadd">
+      <input type="text" class="desc" id="lancDesc" placeholder="Recompensa do barão / compra de poções">
+    </div>
+    <div class="lancadd">
+      <input type="number" class="num" id="lancVal" placeholder="qtd" step="any" style="flex:1">
+      <select id="lancMoeda" style="width:110px"></select>
+      <button class="gbtn" onclick="addLanc(1)" title="entrada">+</button>
+      <button class="gbtn" style="background:var(--blood); border-color:var(--blood); color:#f5e6dc" onclick="addLanc(-1)" title="gasto">−</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Moedas &amp; Câmbio</h2>
+    <p style="font-size:.8rem; color:var(--ink-soft); margin-bottom:10px; line-height:1.4">
+      Defina quanto vale cada moeda <b>em peças de ouro</b>. Ex.: cobre = 0,01 (100 PC = 1 PO); prata = 0,1 (10 PP = 1 PO); platina = 10.
+    </p>
+    <div id="moedaList"></div>
+    <div class="lancadd">
+      <input type="text" id="nmNome" placeholder="Nome (ex.: Dobrão Anão)" style="flex:1.4">
+      <input type="text" id="nmSigla" placeholder="sigla" style="width:64px">
+      <input type="number" id="nmTaxa" placeholder="em PO" step="any" style="width:80px">
+      <button class="gbtn" onclick="addMoeda()">+</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Preços &amp; Mercadores</h2>
+    <textarea id="ecoNotas" placeholder="Poção de cura: 50 PO na botica da Marta. Ferreiro de Vilarejo cobra +20%..." style="min-height:110px"></textarea>
+  </div>
+</section>
+
+<!-- ============ HISTÓRIA ============ -->
+<section id="hist" class="tab">
+  <button class="gbtn" id="notasBtn" style="width:100%; padding:11px 0; margin-bottom:12px" onclick="abrirNotasModal()">📌 Anotações Importantes</button>
+  <div class="searchbar">
+    <input type="text" id="histSearch" placeholder="Buscar na crônica..." oninput="renderHist()">
+    <button class="gbtn" onclick="openHist(null)">Nova</button>
+  </div>
+  <div id="histEditor" class="card" style="display:none">
+    <h2 id="heTitle">Novo capítulo</h2>
+    <div class="row"><div><label>Título</label><input type="text" id="heT" placeholder="Ato 2 — A conspiração do porto"></div></div>
+    <div class="row"><div><label>Texto</label><textarea id="heB" style="min-height:180px" placeholder="Trama, ganchos, o que aconteceu na sessão, planos futuros, segredos que os jogadores ainda não sabem..."></textarea></div></div>
+    <div style="display:flex; gap:8px; margin-top:10px">
+      <button class="gbtn" style="flex:1" onclick="saveHist()">Salvar</button>
+      <button class="gbtn ghost" style="flex:1" onclick="closeHist()">Cancelar</button>
+      <button class="gbtn ghost danger" id="heDel" onclick="delHist()" style="display:none">Apagar</button>
+    </div>
+  </div>
+  <div id="histList"></div>
+</section>
+
+<!-- ============ ITENS ============ -->
+<section id="itens" class="tab">
+  <div class="searchbar">
+    <input type="text" id="itemSearch" placeholder="Buscar item..." oninput="renderItens()">
+    <button class="gbtn" onclick="addItem()">Novo</button>
+  </div>
+  <div id="itemList"></div>
+</section>
+
+<!-- ============ JOGADORES ============ -->
+<section id="players" class="tab">
+  <div class="card">
+    <h2>Receber ficha de jogador</h2>
+    <p style="font-size:.85rem; color:var(--ink-soft); line-height:1.45; margin-bottom:10px">
+      Peça ao jogador para tocar em <b>"enviar herói ao mestre"</b> no Grimório do Aventureiro
+      e te mandar o arquivo <b>.json</b>. Importe-o aqui: a ficha entra na galeria e,
+      a cada novo envio, a evolução de nível fica registrada. (Backups completos do Grimório também funcionam.)
+    </p>
+    <button class="gbtn" style="width:100%" onclick="document.getElementById('playerFile').click()">Importar ficha (.json)</button>
+    <input type="file" id="playerFile" accept=".json,application/json" style="display:none" onchange="importPlayer(this)">
+  </div>
+  <div id="playerList"></div>
+</section>
+
+<!-- ============ MAPA ============ -->
+<section id="mapa" class="tab">
+  <div class="card">
+    <h2>Mapa da Campanha</h2>
+    <div id="mapaVazio" class="empty" style="padding:20px 0">Nenhum mapa carregado ainda.</div>
+    <div id="mapaFerramentas" style="display:none">
+      <div class="maptools">
+        <button class="mtbtn" id="mtPin" onclick="mapaFerramenta('pin')" title="marcador">📍</button>
+        <button class="mtbtn" id="mtDraw" onclick="mapaFerramenta('draw')" title="desenhar">✏️</button>
+        <span class="mtcores">
+          <button class="mtcor" data-c="#c0392b" style="background:#c0392b" onclick="mapaCor('#c0392b')"></button>
+          <button class="mtcor" data-c="#2e7d32" style="background:#2e7d32" onclick="mapaCor('#2e7d32')"></button>
+          <button class="mtcor" data-c="#1565c0" style="background:#1565c0" onclick="mapaCor('#1565c0')"></button>
+          <button class="mtcor" data-c="#f9a825" style="background:#f9a825" onclick="mapaCor('#f9a825')"></button>
+        </span>
+        <button class="mtbtn" onclick="mapaDesfazer()" title="desfazer última marcação">↩</button>
+        <button class="mtbtn" onclick="mapaLimpar()" title="apagar todas as marcações">🗑</button>
+      </div>
+      <div id="mapaCanvasWrap"><canvas id="mapaCanvas"></canvas></div>
+      <p style="font-size:.72rem; color:var(--ink-soft); text-align:center; margin-top:6px">
+        📍 toque no mapa para marcar um ponto (pede um rótulo curto) • ✏️ toque e arraste para desenhar
+      </p>
+    </div>
+    <div class="row r2" style="margin-top:12px">
+      <button class="gbtn" style="padding:10px 0" onclick="document.getElementById('mapaFile').click()">escolher imagem</button>
+      <button class="gbtn ghost" style="padding:10px 0" onclick="mapaRemover()">remover mapa</button>
+    </div>
+    <input type="file" id="mapaFile" accept="image/*" style="display:none" onchange="mapaEscolher(this)">
+    <button class="gbtn" style="width:100%; padding:12px; margin-top:10px" onclick="mapaEnviar()">✦ enviar aos jogadores</button>
+    <div id="mapaStatus" style="font-size:.78rem; color:var(--ink-soft); margin-top:8px; text-align:center"></div>
+  </div>
+</section>
+
+<!-- ============ CAMPANHAS ============ -->
+<!-- ============ CHAT DA MESA ============ -->
+<section id="chat" class="tab">
+  <div class="card">
+    <h2>Chat da Mesa</h2>
+    <div id="chatMsgs" class="chatwrap"><div class="empty">nenhuma mensagem ainda</div></div>
+    <div style="display:flex; gap:6px; margin-top:10px">
+      <select id="chatPara" style="width:150px"><option value="">para todos</option></select>
+      <input type="text" id="chatTxt" placeholder="Mensagem do mestre..." style="flex:1">
+      <button class="gbtn" style="padding:8px 14px" onclick="fbEnviarChat()">➤</button>
+    </div>
+    <p style="font-size:.72rem; color:var(--ink-soft); margin-top:8px; text-align:center">
+      Escolha um jogador no seletor para enviar em segredo 🔒 — só ele verá.
+      Conversas privadas entre jogadores não aparecem para você — são só deles.
+    </p>
+  </div>
+</section>
+
+<section id="camp" class="tab">
+  <div class="card">
+    <h2>Campanha Atual</h2>
+    <label>Nome da campanha</label>
+    <input type="text" id="campNome" placeholder="A Maldição de Vilarejo Sombrio">
+    <div style="display:flex; align-items:center; gap:10px; margin-top:10px">
+      <span id="senhaStatus" style="flex:1; font-size:.82rem; color:var(--ink-soft)">🔓 sem senha</span>
+      <button class="gbtn ghost" style="padding:8px 14px" onclick="campSenha()">definir / alterar senha</button>
+    </div>
+    <p style="font-size:.72rem; color:var(--ink-soft); margin-top:8px">
+      A senha é pedida ao abrir ou apagar esta campanha neste aparelho — proteção básica contra olhos curiosos da mesa.
+    </p>
+  </div>
+  <div class="card">
+    <h2>Mesa Online — tempo real</h2>
+    <p style="font-size:.82rem; color:var(--ink-soft); line-height:1.45; margin-bottom:10px">
+      Com a sala ativa, as fichas dos jogadores chegam e se atualizam sozinhas na aba Jogadores,
+      e os itens entregues/vendidos aparecem na hora no Grimório de cada um.
+      Configure uma vez (veja o passo a passo no arquivo que te enviei) e compartilhe o código da sala com a mesa.
+    </p>
+    <label>Configuração do Firebase (opcional — a da sua mesa já vem gravada)</label>
+    <textarea id="fbCfg" style="min-height:52px; font-size:.78rem" placeholder="já configurado ✓ — preencha só se quiser usar outro projeto Firebase"></textarea>
+    <div class="row r2" style="margin-top:10px">
+      <div><label>Código da sala desta campanha</label><input type="text" id="fbSala" placeholder="MESA42" style="text-transform:uppercase"></div>
+      <div style="display:flex; align-items:flex-end; gap:6px">
+        <button class="gbtn ghost" style="flex:1; padding:9px 0" onclick="fbGerarSala()">gerar código</button>
+        <button class="gbtn" style="flex:1; padding:9px 0" onclick="fbConectar(true)">conectar</button>
+      </div>
+    </div>
+    <div id="fbStatus" style="font-size:.78rem; color:var(--ink-soft); margin-top:8px; text-align:center">sala desconectada</div>
+  </div>
+
+  <button class="gbtn" style="width:100%; padding:12px" onclick="newCamp()">＋ Criar nova campanha</button>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Backup da Galeria</h2>
+    <p style="font-size:.8rem; color:var(--ink-soft); text-align:center; margin-bottom:10px">
+      O backup guarda <b>todas as campanhas</b> num arquivo só — NPCs, combate, economia, história, itens e jogadores.
+    </p>
+    <div class="row r2" style="margin-bottom:0">
+      <button class="gbtn" style="padding:11px 0" onclick="exportData()">salvar backup</button>
+      <button class="gbtn ghost" style="padding:11px 0" onclick="document.getElementById('importFile').click()">restaurar</button>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(this)">
+  </div>
+
+  <div class="card" style="margin-top:14px">
+    <h2>Aparência — Wallpaper</h2>
+    <p style="font-size:.8rem; color:var(--ink-soft); text-align:center; margin-bottom:10px">
+      Escolha uma imagem de fundo para o Escudo (mapa da campanha, arte do mundo...).
+      Ela é escurecida para o texto continuar legível — ajuste no controle abaixo.
+    </p>
+    <div class="row r2" style="margin-bottom:10px">
+      <button class="gbtn" style="padding:10px 0" onclick="document.getElementById('wallFile').click()">escolher imagem</button>
+      <button class="gbtn ghost" style="padding:10px 0" onclick="wallRemover()">remover</button>
+    </div>
+    <label>Escurecimento do fundo</label>
+    <input type="range" id="wallDim" min="40" max="95" value="82" style="width:100%">
+    <input type="file" id="wallFile" accept="image/*" style="display:none" onchange="wallEscolher(this)">
+  </div>
+
+  <div id="campList" style="margin-top:14px"></div>
+</section>
+</main>
+
+<div id="toastLayer"></div>
+<div id="lockScreen" style="display:none">
+  <div class="lockbox">
+    <div class="lockshield">🛡</div>
+    <h1 style="font-family:'Uncial Antiqua',Palatino,serif; color:var(--gold-soft); font-size:1.2rem; letter-spacing:.08em">Escudo Trancado</h1>
+    <div class="sub" id="lockCampNome" style="margin:6px 0 14px; color:#a7aebc"></div>
+    <input type="password" id="lockSenha" placeholder="senha da campanha" autocomplete="off">
+    <button class="gbtn" style="width:100%; padding:11px 0; margin-top:10px" onclick="unlock()">destrancar</button>
+    <div id="lockErro" style="font-size:.78rem; color:#e0a9a4; margin-top:8px; min-height:1em; text-align:center"></div>
+    <div id="lockOutras" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<div id="notasModal" style="display:none">
+  <div class="notashead" id="notasHead">
+    <button class="xbtn" id="notasVoltar" style="display:none" onclick="notasVoltarLista()" title="voltar">←</button>
+    <h2 id="notasTitulo" style="border:none; padding:0; margin:0; flex:1">📌 Anotações</h2>
+    <button class="gbtn" id="notasNovaBtn" style="padding:6px 12px" onclick="notasNova()">+ nova</button>
+    <button class="xbtn" onclick="fecharNotasModal()">✕</button>
+  </div>
+  <div id="notasListaWrap">
+    <div id="notasLista"></div>
+  </div>
+  <div id="notasEditorWrap" style="display:none; flex-direction:column">
+    <input type="text" id="notaTituloInput" placeholder="Título da anotação" style="margin-bottom:8px; font-weight:700">
+    <textarea id="notaTextoInput" placeholder="Segredos ainda não revelados, pistas soltas, NPCs pendentes..."></textarea>
+    <button class="gbtn ghost danger" style="margin-top:10px; padding:8px 0" onclick="notasApagar()">apagar esta anotação</button>
+  </div>
+</div>
+
+<div id="audioBar" class="audiobar">
+  <button id="audioToggleBtn" title="🎵 arraste para mover • toque para abrir/fechar">🎵</button>
+  <div id="audioExpand" style="display:none">
+    <button class="abtn" data-cat="batalha" onclick="audioTap('batalha')" title="Batalha">⚔️</button>
+    <button class="abtn" data-cat="suspense" onclick="audioTap('suspense')" title="Suspense">🕵️</button>
+    <button class="abtn" data-cat="descontracao" onclick="audioTap('descontracao')" title="Descontração">🍻</button>
+    <button id="audioStopBtn" onclick="audioStopAll()" title="parar">⏹</button>
+    <input type="range" id="audioVol" min="0" max="100" value="70" oninput="audioSetVol(this.value)" title="volume">
+    <button onclick="audioAbrirGerenciar()" title="trocar faixas">⚙️</button>
+  </div>
+</div>
+
+<div id="libBtn" class="libbtn" title="📚 arraste para mover • toque para abrir">📚</div>
+<div id="libPanel" style="display:none">
+  <div class="libhead" id="libHead">
+    <h2 style="border:none; padding:0; margin:0; flex:1">📚 Biblioteca Rápida</h2>
+    <button class="xbtn" onclick="libFechar()">✕</button>
+  </div>
+  <div class="libtabs">
+    <button id="libTabRegras" class="on" onclick="libTab('regras')">📜 Regras</button>
+    <button id="libTabPdfs" onclick="libTab('pdfs')">📄 Meus PDFs</button>
+  </div>
+  <input type="text" id="libBusca" placeholder="Buscar: cego, CD, descanso, ajudar..." oninput="libRender()">
+  <button class="gbtn" id="pdfAddBtn" style="display:none; padding:9px 0; margin-bottom:2px" onclick="document.getElementById('libPdfFile').click()">+ adicionar PDF</button>
+  <input type="file" id="libPdfFile" accept="application/pdf" style="display:none" onchange="pdfArquivoEscolhido(this)">
+  <div id="libLista"></div>
+  <p style="font-size:.64rem; color:var(--ink-soft); margin-top:8px; text-align:center">
+    Referência rápida baseada no SRD 5.2 (CC-BY-4.0). Para regras completas, consulte o livro.
+  </p>
+</div>
+
+<div id="audioGerenciar" style="display:none">
+  <div class="notasbox" style="max-width:400px">
+    <div class="notashead" style="cursor:default">
+      <h2 style="border:none; padding:0; margin:0; flex:1">🎵 Faixas de Ambiente</h2>
+      <button class="xbtn" onclick="audioFecharGerenciar()">✕</button>
+    </div>
+    <div id="audioListaFaixas"></div>
+    <p style="font-size:.72rem; color:var(--ink-soft); margin-top:10px; text-align:center">
+      Use suas próprias músicas (arquivos de áudio no seu aparelho). Ficam guardadas neste aparelho para tocar quando quiser.
+    </p>
+  </div>
+</div>
+<input type="file" id="audioFileInput" accept="audio/*" style="display:none">
+
+
+
+<div id="popLayer"></div>
+
+<footer>
+  <button onclick="resetAll()">apagar todos os dados</button>
+</footer>
+
+<script>
+/* ================== estado & armazenamento ================== */
+const KEY="escudo-mestre-v2", KEY_OLD="escudo-mestre-v1";
+function blankData(){
+  return {version:1, npcs:[], mons:[], eco:{lancs:[], notas:""}, hist:[], itens:[], players:[], ui:{}, mapa:{img:"", ops:[]}, notasList:[]};
+}
+function blankCamp(nome){
+  return {id:"cp"+Date.now()+Math.random().toString(36).slice(2,6), nome:nome||"", up:Date.now(), data:blankData()};
+}
+let R={version:2, currentId:null, camps:[]};   // galeria de campanhas
+let C=null;                                     // campanha aberta
+let D=blankData();                              // dados da campanha aberta (atalho)
+let saveTimer=null, memoryOnly=false;
+const uid=p=>p+Date.now()+Math.random().toString(36).slice(2,6);
+const mod=v=>Math.floor((Number(v||10)-10)/2);
+const fmt=m=>(m>=0?"+":"")+m;
+
+function setSaveState(t,ok){const e=document.getElementById("saveState");e.textContent=t;e.className=ok?"ok":"";}
+async function storGet(){
+  if(typeof window.storage!=="undefined"){
+    try{ const r=await window.storage.get(KEY); return r?r.value:null; }catch(e){ return null; }
+  }
+  try{ return localStorage.getItem(KEY); }catch(e){ memoryOnly=true; return null; }
+}
+async function storSet(v){
+  if(typeof window.storage!=="undefined"){ await window.storage.set(KEY,v); return; }
+  localStorage.setItem(KEY,v);
+}
+async function storDel(){
+  if(typeof window.storage!=="undefined"){ try{ await window.storage.delete(KEY); }catch(e){} return; }
+  try{ localStorage.removeItem(KEY); }catch(e){}
+}
+function normData(d){
+  const b=blankData();
+  const out={...b,...d};
+  out.eco={lancs:[],notas:"",...(d&&d.eco||{})};
+  out.hist=Array.isArray(out.hist)?out.hist:[];
+  out.itens=Array.isArray(out.itens)?out.itens:[];
+  out.npcs=Array.isArray(out.npcs)?out.npcs:[];
+  out.mons=Array.isArray(out.mons)?out.mons:[];
+  out.players=Array.isArray(out.players)?out.players:[];
+  out.ui=out.ui||{};
+  out.mapa=out.mapa||{img:"", ops:[]};
+  out.mapa.ops=Array.isArray(out.mapa.ops)?out.mapa.ops:[];
+  out.notasList=Array.isArray(out.notasList)?out.notasList:[];
+  if(out.histNotas && out.histNotas.trim() && !out.notasList.length){
+    out.notasList.push({id:"nt"+Date.now(), titulo:"Anotações", texto:out.histNotas, up:Date.now()});
+  }
+  delete out.histNotas;
+  return out;
+}
+async function storGetKey(k){
+  if(typeof window.storage!=="undefined"){
+    try{ const r=await window.storage.get(k); return r?r.value:null; }catch(e){ return null; }
+  }
+  try{ return localStorage.getItem(k); }catch(e){ memoryOnly=true; return null; }
+}
+async function load(){
+  const raw=await storGetKey(KEY);
+  if(raw){
+    try{
+      const d=JSON.parse(raw);
+      R={version:2, currentId:d.currentId||null,
+         camps:(d.camps||[]).map(c=>({...c, data:normData(c.data)})),
+         fb:d.fb, wall:d.wall||"", wallDim:d.wallDim??82};
+      setSaveState("dados carregados ✧",true);
+    }catch(e){ setSaveState("não consegui ler os dados salvos"); }
+  }else{
+    const old=await storGetKey(KEY_OLD);
+    if(old){
+      try{
+        const c=blankCamp("Minha Campanha");
+        c.data=normData(JSON.parse(old));
+        R.camps=[c];
+        setSaveState("escudo migrado para a galeria de campanhas ✧",true);
+      }catch(e){}
+    }else{
+      setSaveState(memoryOnly?"sem armazenamento — use “salvar backup”":"escudo novo — boa campanha, mestre",!memoryOnly);
+    }
+  }
+  if(!R.camps.length) R.camps=[blankCamp("")];
+  C=R.camps.find(c=>c.id===R.currentId)||R.camps[0];
+  R.currentId=C.id; D=C.data;
+  if(ensureSeed()||!raw) save();   // estoque inicial e persistência da migração
+  if(C.senha){ mostrarLock(); return; }   // fechou a página? a campanha reabre trancada
+  renderAll();
+  fbConectar(false);
+}
+function mostrarLock(){
+  const ls=document.getElementById("lockScreen");
+  ls.style.display="flex";
+  document.getElementById("lockCampNome").textContent="🏰 "+(C.nome||"campanha sem nome");
+  document.getElementById("lockErro").textContent="";
+  const inp=document.getElementById("lockSenha");
+  inp.value=""; setTimeout(()=>inp.focus(),50);
+  if(!inp.dataset.bound){ inp.dataset.bound="1";
+    inp.addEventListener("keydown",e=>{ if(e.key==="Enter") unlock(); }); }
+  // outras campanhas (as sem senha abrem direto; as com senha pedem a própria)
+  const out=document.getElementById("lockOutras"); out.innerHTML="";
+  const outras=R.camps.filter(c=>c.id!==C.id);
+  if(outras.length){
+    const t=document.createElement("div");
+    t.style.cssText="font-size:.72rem; color:#8b93a1; letter-spacing:.1em; text-transform:uppercase; margin-bottom:4px";
+    t.textContent="ou abrir outra campanha";
+    out.appendChild(t);
+    outras.forEach(c=>{
+      const b=document.createElement("button"); b.className="outra";
+      b.textContent=(c.senha?"🔒 ":"")+(c.nome||"(campanha sem nome)");
+      b.onclick=()=>{
+        if(!pedeSenha(c)) return;
+        C=c; R.currentId=c.id; D=c.data;
+        ensureEco(); ensureSeed();
+        document.getElementById("lockScreen").style.display="none";
+        renderAll(); save(); fbConectar(false);
+      };
+      out.appendChild(b);
+    });
+  }
+}
+function unlock(){
+  const s=document.getElementById("lockSenha").value||"";
+  if(sHash(s)!==C.senha){
+    document.getElementById("lockErro").textContent="Senha incorreta — tente de novo.";
+    document.getElementById("lockSenha").value=""; document.getElementById("lockSenha").focus();
+    return;
+  }
+  document.getElementById("lockScreen").style.display="none";
+  renderAll(); fbConectar(false);
+  setSaveState("🔓 campanha destrancada ✧",true);
+}
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async ()=>{
+    if(memoryOnly){ setSaveState("sem armazenamento — use “salvar backup”"); return; }
+    try{ if(C) C.up=Date.now(); await storSet(JSON.stringify(R)); setSaveState("salvo ✧",true); }
+    catch(e){ setSaveState("falha ao salvar — tente de novo"); }
+  },600);
+  setSaveState("salvando...");
+}
+
+/* ================== NPCs ================== */
+let openNpc=null;
+function addNpc(){
+  const n={id:uid("n"), nome:"", local:"", papel:"", atitude:"neutro", notas:""};
+  D.npcs.unshift(n); openNpc=n.id; renderNpcs(); save();
+}
+function renderNpcs(){
+  const q=(document.getElementById("npcSearch").value||"").toLowerCase();
+  const el=document.getElementById("npcList"); el.innerHTML="";
+  const list=D.npcs.filter(n=>!q||`${n.nome} ${n.local} ${n.papel} ${n.notas}`.toLowerCase().includes(q));
+  if(!list.length){ el.innerHTML=`<div class="empty">${q?"Nenhum NPC encontrado.":"Nenhum NPC ainda. Toque em “Novo” para registrar o primeiro."}</div>`; return; }
+  list.forEach(n=>{
+    const open=openNpc===n.id;
+    const d=document.createElement("div"); d.className="card";
+    d.innerHTML=`
+      <div class="toprow">
+        <h3></h3>
+        <span class="badge b-${n.atitude}">${n.atitude}</span>
+        <button class="popbtn" title="abrir em janela">⧉</button>
+        <button class="chev${open?" open":""}" aria-label="detalhes">▸</button>
+        <button class="xbtn" aria-label="remover NPC">✕</button>
+      </div>
+      <div class="dt"></div>
+      <div class="det" style="display:${open?"block":"none"}; margin-top:10px">
+        <div class="row r2">
+          <div><label>Nome</label><input type="text" class="f-nome"></div>
+          <div><label>Atitude</label>
+            <select class="f-atit">
+              <option value="aliado">Aliado</option><option value="neutro">Neutro</option><option value="hostil">Hostil</option>
+            </select></div>
+        </div>
+        <div class="row r2">
+          <div><label>Local</label><input type="text" class="f-local" placeholder="Taverna do Javali"></div>
+          <div><label>Papel</label><input type="text" class="f-papel" placeholder="informante, mercador..."></div>
+        </div>
+        <label>Notas &amp; segredos</label>
+        <textarea class="f-notas" placeholder="Voz rouca. Deve dinheiro à guilda. Sabe onde fica a cripta..."></textarea>
+      </div>`;
+    d.querySelector("h3").textContent=n.nome||"(NPC sem nome)";
+    d.querySelector(".dt").textContent=[n.papel,n.local].filter(Boolean).join(" — ")||" ";
+    d.querySelector(".chev").onclick=()=>{ openNpc=open?null:n.id; renderNpcs(); };
+    d.querySelector(".popbtn").onclick=(ev)=>{ ev.stopPropagation(); openPopup("npc",n.id); };
+    d.querySelector(".xbtn").onclick=()=>{
+      if(confirm(`Remover "${n.nome||"NPC sem nome"}"?`)){ D.npcs=D.npcs.filter(x=>x.id!==n.id); renderNpcs(); save(); }
+    };
+    if(open){
+      const g=c=>d.querySelector(c);
+      g(".f-nome").value=n.nome; g(".f-local").value=n.local; g(".f-papel").value=n.papel;
+      g(".f-atit").value=n.atitude; g(".f-notas").value=n.notas;
+      g(".f-nome").oninput=e=>{n.nome=e.target.value; d.querySelector("h3").textContent=n.nome||"(NPC sem nome)"; save();};
+      g(".f-local").oninput=e=>{n.local=e.target.value; save();};
+      g(".f-papel").oninput=e=>{n.papel=e.target.value; save();};
+      g(".f-atit").onchange=e=>{n.atitude=e.target.value; renderNpcs(); save();};
+      g(".f-notas").oninput=e=>{n.notas=e.target.value; save();};
+    }
+    el.appendChild(d);
+  });
+}
+
+/* ================== fichas de combate ================== */
+let openMon=null;
+function blankMon(){
+  return {id:uid("m"), nome:"", tipo:"", ca:12, pvmax:10, pv:10, desloc:"9m", cd:"",
+    abs:{for:10,des:10,con:10,int:10,sab:10,car:10}, atks:[], tracos:""};
+}
+function addMon(){ const m=blankMon(); D.mons.unshift(m); openMon=m.id; renderMons(); save(); }
+function dupMon(m){
+  const c=JSON.parse(JSON.stringify(m)); c.id=uid("m");
+  c.nome=(m.nome||"criatura")+" II"; c.pv=c.pvmax;
+  const i=D.mons.findIndex(x=>x.id===m.id);
+  D.mons.splice(i+1,0,c); renderMons(); save();
+}
+function renderMons(){
+  const el=document.getElementById("monList"); el.innerHTML="";
+  if(!D.mons.length){ el.innerHTML='<div class="empty">Nenhuma ficha de combate. Crie os monstros e vilões do próximo encontro.</div>'; return; }
+  D.mons.forEach(m=>{
+    const open=openMon===m.id;
+    const d=document.createElement("div"); d.className="card";
+    d.innerHTML=`
+      <div class="toprow">
+        <h3></h3>
+        <span class="badge">${m.pv}/${m.pvmax} PV</span>
+        <button class="popbtn" title="abrir em janela">⧉</button>
+        <button class="chev${open?" open":""}" aria-label="detalhes">▸</button>
+        <button class="xbtn" aria-label="remover ficha">✕</button>
+      </div>
+      <div class="dt"></div>
+      <div class="det" style="display:${open?"block":"none"}; margin-top:10px"></div>`;
+    d.querySelector("h3").textContent=m.nome||"(criatura sem nome)";
+    d.querySelector(".dt").textContent=[m.tipo,`CA ${m.ca}`,m.desloc].filter(Boolean).join(" • ");
+    d.querySelector(".chev").onclick=()=>{ openMon=open?null:m.id; renderMons(); };
+    d.querySelector(".popbtn").onclick=(ev)=>{ ev.stopPropagation(); openPopup("mon",m.id); };
+    d.querySelector(".xbtn").onclick=()=>{
+      if(confirm(`Remover "${m.nome||"criatura"}"?`)){ D.mons=D.mons.filter(x=>x.id!==m.id); renderMons(); save(); }
+    };
+    if(open){
+      const det=d.querySelector(".det");
+      det.innerHTML=`
+        <div class="row r2">
+          <div><label>Nome</label><input type="text" class="f-nome"></div>
+          <div><label>Tipo</label><input type="text" class="f-tipo" placeholder="goblin, morto-vivo..."></div>
+        </div>
+        <div class="hpline">
+          <button class="btn-dmg">−</button>
+          <input type="number" class="f-amt" value="1" min="1" aria-label="quantidade">
+          <button class="btn-heal">+</button>
+          <div class="hpv">${m.pv} / <span style="font-size:.85rem;color:var(--ink-soft)">${m.pvmax}</span></div>
+        </div>
+        <div class="pills">
+          <div class="pill"><div class="v"><input type="number" class="f-ca" style="border:none;background:transparent;width:100%;text-align:center;font-weight:700"></div><div class="k">CA</div></div>
+          <div class="pill"><div class="v"><input type="number" class="f-pvmax" style="border:none;background:transparent;width:100%;text-align:center;font-weight:700"></div><div class="k">PV máx</div></div>
+          <div class="pill"><div class="v"><input type="text" class="f-desl" style="border:none;background:transparent;width:100%;text-align:center;font-weight:700"></div><div class="k">Desloc.</div></div>
+          <div class="pill"><div class="v"><input type="text" class="f-cd" style="border:none;background:transparent;width:100%;text-align:center;font-weight:700" placeholder="—"></div><div class="k">CD</div></div>
+        </div>
+        <div class="absrow"></div>
+        <label style="margin-top:8px">Ataques</label>
+        <div class="f-atks"></div>
+        <button class="add f-addatk">+ ataque</button>
+        <label style="margin-top:10px">Traços &amp; táticas</label>
+        <textarea class="f-tracos" placeholder="Furtividade +6, foge com metade dos PV, imune a veneno..."></textarea>
+        <button class="add f-dup" style="margin-top:10px">⧉ duplicar criatura</button>`;
+      const g=c=>det.querySelector(c);
+      g(".f-nome").value=m.nome; g(".f-tipo").value=m.tipo; g(".f-ca").value=m.ca;
+      g(".f-pvmax").value=m.pvmax; g(".f-desl").value=m.desloc; g(".f-cd").value=m.cd;
+      g(".f-tracos").value=m.tracos;
+      g(".f-nome").oninput=e=>{m.nome=e.target.value; d.querySelector("h3").textContent=m.nome||"(criatura sem nome)"; save();};
+      g(".f-tipo").oninput=e=>{m.tipo=e.target.value; save();};
+      g(".f-ca").oninput=e=>{m.ca=Number(e.target.value)||0; save();};
+      g(".f-pvmax").oninput=e=>{m.pvmax=Math.max(1,Number(e.target.value)||1); m.pv=Math.min(m.pv,m.pvmax); renderMons(); save();};
+      g(".f-desl").oninput=e=>{m.desloc=e.target.value; save();};
+      g(".f-cd").oninput=e=>{m.cd=e.target.value; save();};
+      g(".f-tracos").oninput=e=>{m.tracos=e.target.value; save();};
+      det.querySelector(".btn-dmg").onclick=()=>{ const a=Math.max(1,Number(g(".f-amt").value)||1); m.pv=Math.max(0,m.pv-a); renderMons(); save(); };
+      det.querySelector(".btn-heal").onclick=()=>{ const a=Math.max(1,Number(g(".f-amt").value)||1); m.pv=Math.min(m.pvmax,m.pv+a); renderMons(); save(); };
+      g(".f-dup").onclick=()=>dupMon(m);
+      // atributos
+      const ar=det.querySelector(".absrow");
+      [["for","FOR"],["des","DES"],["con","CON"],["int","INT"],["sab","SAB"],["car","CAR"]].forEach(([k,nm])=>{
+        const a=document.createElement("div"); a.className="ab";
+        a.innerHTML=`<div class="nm">${nm}</div><input type="number" value="${m.abs[k]}" aria-label="${nm}"><div class="m">${fmt(mod(m.abs[k]))}</div>`;
+        a.querySelector("input").oninput=e=>{ m.abs[k]=Number(e.target.value)||10; a.querySelector(".m").textContent=fmt(mod(m.abs[k])); save(); };
+        ar.appendChild(a);
+      });
+      // ataques
+      const renderAtksM=()=>{
+        const w=det.querySelector(".f-atks"); w.innerHTML="";
+        m.atks.forEach((a,i)=>{
+          const r=document.createElement("div"); r.className="atk";
+          r.innerHTML=`<input type="text" placeholder="Cimitarra"><input type="text" placeholder="+4"><input type="text" placeholder="1d6+2"><button class="xbtn">✕</button>`;
+          const ins=r.querySelectorAll("input");
+          ins[0].value=a.n||""; ins[1].value=a.b||""; ins[2].value=a.d||"";
+          ins[0].oninput=e=>{a.n=e.target.value;save();};
+          ins[1].oninput=e=>{a.b=e.target.value;save();};
+          ins[2].oninput=e=>{a.d=e.target.value;save();};
+          r.querySelector(".xbtn").onclick=()=>{m.atks.splice(i,1);renderAtksM();save();};
+          w.appendChild(r);
+        });
+      };
+      renderAtksM();
+      det.querySelector(".f-addatk").onclick=()=>{ m.atks.push({n:"",b:"",d:""}); renderAtksM(); };
+    }
+    el.appendChild(d);
+  });
+}
+
+/* ================== economia ================== */
+const MOEDAS_PADRAO=[
+  {id:"pc", nome:"Cobre",   sigla:"PC", taxa:0.01},
+  {id:"pp", nome:"Prata",   sigla:"PP", taxa:0.1},
+  {id:"pe", nome:"Electro", sigla:"PE", taxa:0.5},
+  {id:"po", nome:"Ouro",    sigla:"PO", taxa:1},
+  {id:"pl", nome:"Platina", sigla:"PL", taxa:10}
+];
+function ensureEco(){
+  if(!Array.isArray(D.eco.moedas)||!D.eco.moedas.length) D.eco.moedas=JSON.parse(JSON.stringify(MOEDAS_PADRAO));
+  D.eco.lancs=(D.eco.lancs||[]).map(l=>{
+    if(l.moeda) return l;
+    return {id:l.id, ts:l.ts, desc:l.desc, qtd:l.val, moeda:"po"};   // migra lançamentos antigos (eram em PO)
+  });
+}
+const moedaDe=id=>D.eco.moedas.find(m=>m.id===id)||D.eco.moedas.find(m=>m.id==="po")||D.eco.moedas[0];
+function renderEco(){
+  ensureEco();
+  // saldos por moeda
+  const saldos={};
+  D.eco.lancs.forEach(l=>{ saldos[l.moeda]=(saldos[l.moeda]||0)+l.qtd; });
+  const totalPO=D.eco.moedas.reduce((s,m)=>s+(saldos[m.id]||0)*m.taxa,0);
+  const sv=document.getElementById("saldoV");
+  sv.textContent=(Math.round(totalPO*100)/100).toLocaleString("pt-BR");
+  sv.className="v"+(totalPO<0?" neg":"");
+  const cw=document.getElementById("carteiras"); cw.innerHTML="";
+  D.eco.moedas.forEach(m=>{
+    const q=saldos[m.id]||0;
+    if(q===0 && !["pc","pp","po"].includes(m.id)) return;   // esconde carteiras zeradas das moedas extras
+    const p=document.createElement("div"); p.className="pill";
+    p.innerHTML=`<div class="v" style="font-size:.95rem">${q.toLocaleString("pt-BR")}</div><div class="k">${m.sigla}</div>`;
+    cw.appendChild(p);
+  });
+  // seletor do lançamento
+  const sel=document.getElementById("lancMoeda");
+  const cur=sel.value;
+  sel.innerHTML=D.eco.moedas.map(m=>`<option value="${m.id}">${m.sigla}</option>`).join("");
+  sel.value=D.eco.moedas.some(m=>m.id===cur)?cur:"po";
+  // lançamentos
+  const el=document.getElementById("lancList"); el.innerHTML="";
+  if(!D.eco.lancs.length){ el.innerHTML='<div class="empty" style="padding:12px">Nenhum lançamento ainda.</div>'; }
+  [...D.eco.lancs].sort((a,b)=>b.ts-a.ts).forEach(l=>{
+    const m=moedaDe(l.moeda);
+    const r=document.createElement("div"); r.className="lanc";
+    const dt=new Date(l.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"});
+    r.innerHTML=`<span class="dt">${dt}</span><span class="d"></span>
+      <span class="val ${l.qtd>=0?"pos":"neg"}">${l.qtd>=0?"+":""}${l.qtd.toLocaleString("pt-BR")} ${m.sigla}</span>
+      <button class="xbtn">✕</button>`;
+    r.querySelector(".d").textContent=l.desc||"(sem descrição)";
+    r.querySelector(".xbtn").onclick=()=>{ D.eco.lancs=D.eco.lancs.filter(x=>x.id!==l.id); renderEco(); save(); };
+    el.appendChild(r);
+  });
+  // câmbio
+  const ml=document.getElementById("moedaList"); ml.innerHTML="";
+  D.eco.moedas.forEach(m=>{
+    const emUso=D.eco.lancs.some(l=>l.moeda===m.id);
+    const r=document.createElement("div"); r.className="lanc";
+    r.innerHTML=`<span class="d"><b>${m.sigla}</b> — <span class="mn"></span></span>
+      <span style="white-space:nowrap">1 ${m.sigla} = <input type="number" step="any" value="${m.taxa}" style="width:70px; padding:4px; text-align:right"> PO</span>
+      <button class="xbtn" ${emUso||m.id==="po"?"disabled style='opacity:.25;cursor:default'":""}>✕</button>`;
+    r.querySelector(".mn").textContent=m.nome;
+    r.querySelector("input").oninput=e=>{ m.taxa=Number(e.target.value)||0; renderEcoTotais(); save(); };
+    if(!emUso&&m.id!=="po") r.querySelector(".xbtn").onclick=()=>{
+      if(confirm(`Remover a moeda ${m.nome} (${m.sigla})?`)){ D.eco.moedas=D.eco.moedas.filter(x=>x.id!==m.id); renderEco(); save(); }
+    };
+    ml.appendChild(r);
+  });
+  const ta=document.getElementById("ecoNotas");
+  if(!ta.dataset.bound){ ta.dataset.bound="1"; ta.oninput=e=>{ D.eco.notas=e.target.value; save(); }; }
+  ta.value=D.eco.notas||"";
+}
+function renderEcoTotais(){   // atualiza só o total e as carteiras sem redesenhar os inputs de câmbio
+  const saldos={};
+  D.eco.lancs.forEach(l=>{ saldos[l.moeda]=(saldos[l.moeda]||0)+l.qtd; });
+  const totalPO=D.eco.moedas.reduce((s,m)=>s+(saldos[m.id]||0)*m.taxa,0);
+  const sv=document.getElementById("saldoV");
+  sv.textContent=(Math.round(totalPO*100)/100).toLocaleString("pt-BR");
+  sv.className="v"+(totalPO<0?" neg":"");
+}
+function addLanc(sign){
+  const desc=document.getElementById("lancDesc").value.trim();
+  const v=Math.abs(Number(document.getElementById("lancVal").value));
+  if(!v){ document.getElementById("lancVal").focus(); return; }
+  D.eco.lancs.push({id:uid("l"), ts:Date.now(), desc, qtd:sign*v, moeda:document.getElementById("lancMoeda").value});
+  document.getElementById("lancDesc").value=""; document.getElementById("lancVal").value="";
+  renderEco(); save();
+}
+function addMoeda(){
+  const nome=document.getElementById("nmNome").value.trim();
+  const sigla=document.getElementById("nmSigla").value.trim().toUpperCase();
+  const taxa=Number(document.getElementById("nmTaxa").value);
+  if(!nome||!sigla||!taxa){ alert("Preencha nome, sigla e o valor em PO (ex.: 0,5)."); return; }
+  if(D.eco.moedas.some(m=>m.sigla===sigla)){ alert("Já existe uma moeda com essa sigla."); return; }
+  D.eco.moedas.push({id:uid("mo"), nome, sigla, taxa});
+  document.getElementById("nmNome").value=""; document.getElementById("nmSigla").value=""; document.getElementById("nmTaxa").value="";
+  renderEco(); save();
+}
+
+/* ================== história (crônica) ================== */
+let editingHist=null;
+let notasEditId=null;
+function atualizarBadgeNotas(){
+  const b=document.getElementById("notasBtn"); if(!b) return;
+  b.classList.toggle("tem-nota", (D.notasList||[]).some(n=>(n.titulo&&n.titulo.trim())||(n.texto&&n.texto.trim())));
+}
+function abrirNotasModal(){
+  const win=document.getElementById("notasModal");
+  win.style.display="flex";
+  D.ui=D.ui||{}; D.ui.notasWin=D.ui.notasWin||{};
+  const pos=D.ui.notasWin;
+  if(pos.x!=null){ win.style.left=pos.x+"px"; win.style.top=pos.y+"px"; win.style.right="auto"; }
+  win.style.zIndex=++popZ;
+  notasMostrarLista();
+}
+function fecharNotasModal(){
+  document.getElementById("notasModal").style.display="none";
+}
+(function notasBindDrag(){
+  function bind(){
+    const win=document.getElementById("notasModal"), head=document.getElementById("notasHead");
+    if(!win||!head||head.dataset.bound) return;
+    head.dataset.bound="1";
+    win.addEventListener("mousedown",()=>{ win.style.zIndex=++popZ; });
+    const pos=e=>{ const t=(e.touches&&e.touches[0])||e; return [t.clientX,t.clientY]; };
+    const down=e=>{
+      if(e.target.closest("button")) return;
+      const [sx0,sy0]=pos(e);
+      const sx=sx0-win.offsetLeft, sy=sy0-win.offsetTop;
+      win.style.zIndex=++popZ;
+      const move=m=>{
+        m.preventDefault();
+        const [mx,my]=pos(m);
+        win.style.left=Math.max(0,Math.min(window.innerWidth-60,mx-sx))+"px";
+        win.style.top=Math.max(0,Math.min(window.innerHeight-40,my-sy))+"px";
+        win.style.right="auto";
+      };
+      const up=()=>{
+        document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up);
+        document.removeEventListener("touchmove",move); document.removeEventListener("touchend",up);
+        D.ui=D.ui||{}; D.ui.notasWin={x:win.offsetLeft, y:win.offsetTop}; save();
+      };
+      document.addEventListener("mousemove",move); document.addEventListener("mouseup",up);
+      document.addEventListener("touchmove",move,{passive:false}); document.addEventListener("touchend",up);
+    };
+    head.addEventListener("mousedown",down);
+    head.addEventListener("touchstart",down,{passive:true});
+  }
+  if(document.readyState!=="loading") bind(); else document.addEventListener("DOMContentLoaded",bind);
+})();
+function notasMostrarLista(){
+  notasEditId=null;
+  document.getElementById("notasTitulo").textContent="📌 Anotações";
+  document.getElementById("notasVoltar").style.display="none";
+  document.getElementById("notasNovaBtn").style.display="inline-block";
+  document.getElementById("notasListaWrap").style.display="block";
+  document.getElementById("notasEditorWrap").style.display="none";
+  renderNotasLista();
+}
+function renderNotasLista(){
+  const el=document.getElementById("notasLista"); if(!el) return;
+  const list=(D.notasList||[]).slice().sort((a,b)=>(b.up||0)-(a.up||0));
+  if(!list.length){ el.innerHTML='<div class="empty" style="padding:16px 4px">Nenhuma anotação ainda. Toque em "+ nova" para criar a primeira.</div>'; return; }
+  el.innerHTML="";
+  list.forEach(n=>{
+    const d=document.createElement("div"); d.className="notaItem";
+    d.innerHTML=`<div class="ni-tx"><div class="ni-t"></div><div class="ni-s"></div></div><button class="xbtn" style="width:30px;height:30px;font-size:.95rem">✕</button>`;
+    d.querySelector(".ni-t").textContent=n.titulo||"(sem título)";
+    d.querySelector(".ni-s").textContent=(n.texto||"").replace(/[\r\n]+/g," ").slice(0,70);
+    d.querySelector(".ni-tx").onclick=()=>notasAbrir(n.id);
+    d.querySelector(".xbtn").onclick=(ev)=>{ ev.stopPropagation(); notasApagar(n.id); };
+    el.appendChild(d);
+  });
+}
+function notasNova(){
+  const n={id:"nt"+Date.now()+Math.random().toString(36).slice(2,5), titulo:"", texto:"", up:Date.now()};
+  D.notasList=D.notasList||[]; D.notasList.push(n);
+  save(); notasAbrir(n.id);
+}
+function notasAbrir(id){
+  const n=(D.notasList||[]).find(x=>x.id===id); if(!n) return;
+  notasEditId=id;
+  document.getElementById("notasTitulo").textContent="📌 Anotação";
+  document.getElementById("notasVoltar").style.display="inline-flex";
+  document.getElementById("notasNovaBtn").style.display="none";
+  document.getElementById("notasListaWrap").style.display="none";
+  document.getElementById("notasEditorWrap").style.display="flex";
+  document.getElementById("notaTituloInput").value=n.titulo||"";
+  document.getElementById("notaTextoInput").value=n.texto||"";
+  setTimeout(()=>document.getElementById("notaTituloInput").focus(),50);
+}
+function notasVoltarLista(){
+  notasSalvarCampo();
+  notasMostrarLista();
+}
+function notasSalvarCampo(){
+  if(!notasEditId) return;
+  const n=(D.notasList||[]).find(x=>x.id===notasEditId); if(!n) return;
+  n.titulo=document.getElementById("notaTituloInput").value;
+  n.texto=document.getElementById("notaTextoInput").value;
+  n.up=Date.now();
+  save(); atualizarBadgeNotas();
+}
+function notasApagar(id){
+  id=id||notasEditId; if(!id) return;
+  if(!confirm("Apagar esta anotação?")) return;
+  D.notasList=(D.notasList||[]).filter(x=>x.id!==id);
+  save(); atualizarBadgeNotas();
+  notasMostrarLista();
+}
+(function(){
+  document.addEventListener("input",e=>{
+    if(e.target&&(e.target.id==="notaTituloInput"||e.target.id==="notaTextoInput")) notasSalvarCampo();
+  });
+})();
+function renderHist(){
+  atualizarBadgeNotas();
+  const q=(document.getElementById("histSearch").value||"").toLowerCase();
+  const el=document.getElementById("histList"); el.innerHTML="";
+  const list=D.hist.filter(h=>!q||(h.t+" "+h.b).toLowerCase().includes(q)).sort((a,b)=>b.ts-a.ts);
+  if(!list.length){
+    el.innerHTML=`<div class="empty">${q?"Nada encontrado.":"A crônica está em branco. Toque em “Nova” para escrever o primeiro capítulo da campanha."}</div>`;
+    return;
+  }
+  list.forEach(h=>{
+    const d=document.createElement("div"); d.className="card"; d.style.cursor="pointer";
+    const dt=new Date(h.ts).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"});
+    d.innerHTML=`<h3></h3><div class="dt">${dt}</div>
+      <p style="font-size:.9rem;color:var(--ink-soft);margin-top:6px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden"></p>`;
+    d.querySelector("h3").textContent=h.t||"(sem título)";
+    d.querySelector("p").textContent=h.b||"";
+    d.onclick=()=>openHist(h.id);
+    el.appendChild(d);
+  });
+}
+function openHist(id){
+  editingHist=id;
+  const ed=document.getElementById("histEditor"); ed.style.display="block";
+  const h=D.hist.find(x=>x.id===id);
+  document.getElementById("heTitle").textContent=h?"Editar capítulo":"Novo capítulo";
+  document.getElementById("heT").value=h?h.t:"";
+  document.getElementById("heB").value=h?h.b:"";
+  document.getElementById("heDel").style.display=h?"block":"none";
+  ed.scrollIntoView({behavior:"smooth"});
+  document.getElementById("heT").focus();
+}
+function closeHist(){ document.getElementById("histEditor").style.display="none"; editingHist=null; }
+function saveHist(){
+  const t=document.getElementById("heT").value.trim();
+  const b=document.getElementById("heB").value;
+  if(!t && !b.trim()){ closeHist(); return; }
+  if(editingHist){ const h=D.hist.find(x=>x.id===editingHist); h.t=t; h.b=b; }
+  else D.hist.push({id:uid("h"), t, b, ts:Date.now()});
+  save(); closeHist(); renderHist();
+}
+function delHist(){
+  if(!editingHist) return;
+  if(!confirm("Apagar este capítulo? Isso não pode ser desfeito.")) return;
+  D.hist=D.hist.filter(x=>x.id!==editingHist);
+  save(); closeHist(); renderHist();
+}
+
+/* ================== forja de itens ================== */
+let openItem=null;
+const RARIDADES=["comum","incomum","raro","muito raro","lendário","artefato"];
+const TIPOSITEM=["arma","armadura","escudo","poção","pergaminho","anel","varinha","cajado","item maravilhoso","joia","equipamento","outro"];
+const SEED_ITENS=[
+  {nome:"Poção de Cura", tipo:"poção", raridade:"comum", sintonia:false, valor:"50",
+   desc:"Recupera 2d4+2 pontos de vida. Regra 2024: beber a própria poção é ação bônus; dar a poção a outra criatura gasta uma ação."},
+  {nome:"Poção de Cura Maior", tipo:"poção", raridade:"incomum", sintonia:false, valor:"250",
+   desc:"Recupera 4d4+4 pontos de vida. Beber a própria é ação bônus."},
+  {nome:"Poção de Cura Superior", tipo:"poção", raridade:"raro", sintonia:false, valor:"2500",
+   desc:"Recupera 8d4+8 pontos de vida. Beber a própria é ação bônus."},
+  {nome:"Antitoxina", tipo:"poção", raridade:"comum", sintonia:false, valor:"50",
+   desc:"Após beber, a criatura tem vantagem em salvaguardas contra veneno por 1 hora."},
+  {nome:"Água Benta (frasco)", tipo:"equipamento", raridade:"comum", sintonia:false, valor:"25",
+   desc:"Ação: arremessar até 6 m (ataque à distância improvisado). Se acertar um morto-vivo ou demônio, causa 2d6 de dano radiante."},
+  {nome:"Kit de Curandeiro", tipo:"equipamento", raridade:"comum", sintonia:false, valor:"5",
+   desc:"10 usos. Ação: estabiliza uma criatura com 0 PV sem precisar de teste de Medicina."},
+  {nome:"Corda de Cânhamo (15 m)", tipo:"equipamento", raridade:"comum", sintonia:false, valor:"1",
+   desc:"15 metros. Serve para escalar, amarrar e improvisar. Pode ser cortada ou arrebentada a critério do mestre."},
+  {nome:"Tocha", tipo:"equipamento", raridade:"comum", sintonia:false, valor:"0,01",
+   desc:"Queima por 1 hora: luz plena num raio de 6 m e penumbra por mais 6 m. Como arma improvisada acesa, causa 1 de dano de fogo."},
+  {nome:"Arma +1", tipo:"arma", raridade:"incomum", sintonia:false, valor:"—",
+   desc:"Bônus de +1 nas jogadas de ataque e de dano feitas com esta arma. Defina o tipo de arma ao entregar (espada longa +1, arco curto +1...)."},
+  {nome:"Escudo +1", tipo:"escudo", raridade:"incomum", sintonia:false, valor:"—",
+   desc:"Concede +1 de CA, além do bônus normal do escudo (+2), enquanto empunhado."},
+  {nome:"Bolsa de Contenção", tipo:"item maravilhoso", raridade:"incomum", sintonia:false, valor:"—",
+   desc:"Espaço extradimensional: guarda até cerca de 230 kg num volume interno grande, mas a bolsa pesa sempre ~7,5 kg. Se for perfurada ou virada do avesso, o conteúdo se espalha. Não coloque uma bolsa de contenção dentro de outra."},
+  {nome:"Pedra da Boa Sorte", tipo:"item maravilhoso", raridade:"incomum", sintonia:true, valor:"—",
+   desc:"Enquanto a pedra estiver com você (exige sintonia), ganhe +1 em testes de atributo e salvaguardas."},
+  {nome:"Varinha de Mísseis Mágicos", tipo:"varinha", raridade:"incomum", sintonia:false, valor:"—",
+   desc:"7 cargas. Ação: gaste 1 ou mais cargas para conjurar Mísseis Mágicos (1º círculo por carga extra, aumenta o círculo). Recupera 1d6+1 cargas ao amanhecer; se gastar a última, role 1d20 — com 1, a varinha vira cinzas."},
+  {nome:"Corda de Escalada", tipo:"item maravilhoso", raridade:"incomum", sintonia:false, valor:"—",
+   desc:"18 m de corda que obedece a comandos: move-se até 3 m por turno, sobe, amarra-se e desamarra-se sozinha. Sustenta cargas muito pesadas."},
+  {nome:"Pergaminho de Magia (1º círculo)", tipo:"pergaminho", raridade:"comum", sintonia:false, valor:"—",
+   desc:"Contém uma magia de 1º círculo (escolha ao entregar). Quem tiver a magia na lista da sua classe pode conjurá-la lendo o pergaminho, sem gastar espaço; o pergaminho se desfaz. CD 13 e bônus de ataque +5 quando relevante."}
+];
+const SEED_ARMAS=[
+  // ---- armas simples (corpo a corpo) ----
+  {nome:"Adaga", tipo:"arma", raridade:"comum", sintonia:false, valor:"2",
+   desc:"1d4 perfurante. Acuidade, leve, arremesso (6/18 m). Maestria: Nick — o ataque extra de duas armas leves entra na própria ação Atacar."},
+  {nome:"Bordão", tipo:"arma", raridade:"comum", sintonia:false, valor:"0,2",
+   desc:"1d6 contundente (1d8 com as duas mãos — versátil). Maestria: Topple — ao acertar, o alvo faz salvaguarda de CON ou cai caído."},
+  {nome:"Maça", tipo:"arma", raridade:"comum", sintonia:false, valor:"5",
+   desc:"1d6 contundente. Maestria: Sap — ao acertar, o alvo tem desvantagem no próximo ataque dele."},
+  {nome:"Lança", tipo:"arma", raridade:"comum", sintonia:false, valor:"1",
+   desc:"1d6 perfurante (1d8 com as duas mãos — versátil). Arremesso (6/18 m). Maestria: Sap."},
+  {nome:"Machadinha", tipo:"arma", raridade:"comum", sintonia:false, valor:"5",
+   desc:"1d6 cortante. Leve, arremesso (6/18 m). Maestria: Vex — ao acertar, você tem vantagem no próximo ataque contra esse alvo."},
+  // ---- armas simples (à distância) ----
+  {nome:"Arco Curto", tipo:"arma", raridade:"comum", sintonia:false, valor:"25",
+   desc:"1d6 perfurante. Alcance 24/96 m, duas mãos, munição. Maestria: Vex."},
+  {nome:"Besta Leve", tipo:"arma", raridade:"comum", sintonia:false, valor:"25",
+   desc:"1d8 perfurante. Alcance 24/96 m, duas mãos, munição, recarga. Maestria: Slow — ao acertar, reduz o deslocamento do alvo em 3 m."},
+  // ---- armas marciais (corpo a corpo) ----
+  {nome:"Espada Curta", tipo:"arma", raridade:"comum", sintonia:false, valor:"10",
+   desc:"1d6 perfurante. Acuidade, leve. Maestria: Vex."},
+  {nome:"Cimitarra", tipo:"arma", raridade:"comum", sintonia:false, valor:"25",
+   desc:"1d6 cortante. Acuidade, leve. Maestria: Nick."},
+  {nome:"Espada Longa", tipo:"arma", raridade:"comum", sintonia:false, valor:"15",
+   desc:"1d8 cortante (1d10 com as duas mãos — versátil). Maestria: Sap."},
+  {nome:"Rapieira", tipo:"arma", raridade:"comum", sintonia:false, valor:"25",
+   desc:"1d8 perfurante. Acuidade. Maestria: Vex."},
+  {nome:"Martelo de Guerra", tipo:"arma", raridade:"comum", sintonia:false, valor:"15",
+   desc:"1d8 contundente (1d10 com as duas mãos — versátil). Maestria: Push — ao acertar, empurra o alvo até 3 m (Grande ou menor)."},
+  {nome:"Espada Grande", tipo:"arma", raridade:"comum", sintonia:false, valor:"50",
+   desc:"2d6 cortante. Pesada, duas mãos. Maestria: Graze — mesmo errando, causa dano igual ao seu modificador de atributo."},
+  {nome:"Machado Grande", tipo:"arma", raridade:"comum", sintonia:false, valor:"30",
+   desc:"1d12 cortante. Pesada, duas mãos. Maestria: Cleave — ao acertar, um ataque extra contra outra criatura adjacente ao alvo (dano sem modificador)."},
+  {nome:"Malho", tipo:"arma", raridade:"comum", sintonia:false, valor:"10",
+   desc:"2d6 contundente. Pesada, duas mãos. Maestria: Topple."},
+  // ---- armas marciais (à distância) ----
+  {nome:"Arco Longo", tipo:"arma", raridade:"comum", sintonia:false, valor:"50",
+   desc:"1d8 perfurante. Alcance 45/180 m, pesada, duas mãos, munição. Maestria: Slow."},
+  {nome:"Besta Pesada", tipo:"arma", raridade:"comum", sintonia:false, valor:"50",
+   desc:"1d10 perfurante. Alcance 30/120 m, pesada, duas mãos, munição, recarga. Maestria: Push."},
+  // ---- armaduras leves ----
+  {nome:"Armadura Acolchoada", tipo:"armadura", raridade:"comum", sintonia:false, valor:"5",
+   desc:"Leve. CA 11 + mod. DES. Desvantagem em Furtividade."},
+  {nome:"Armadura de Couro", tipo:"armadura", raridade:"comum", sintonia:false, valor:"10",
+   desc:"Leve. CA 11 + mod. DES."},
+  {nome:"Couro Batido", tipo:"armadura", raridade:"comum", sintonia:false, valor:"45",
+   desc:"Leve. CA 12 + mod. DES."},
+  // ---- armaduras médias ----
+  {nome:"Gibão de Peles", tipo:"armadura", raridade:"comum", sintonia:false, valor:"10",
+   desc:"Média. CA 12 + mod. DES (máx. +2)."},
+  {nome:"Camisão de Malha", tipo:"armadura", raridade:"comum", sintonia:false, valor:"50",
+   desc:"Média. CA 13 + mod. DES (máx. +2)."},
+  {nome:"Brunea", tipo:"armadura", raridade:"comum", sintonia:false, valor:"75",
+   desc:"Média. CA 14 + mod. DES (máx. +2). Desvantagem em Furtividade."},
+  {nome:"Peitoral", tipo:"armadura", raridade:"comum", sintonia:false, valor:"400",
+   desc:"Média. CA 14 + mod. DES (máx. +2)."},
+  {nome:"Meia-Armadura", tipo:"armadura", raridade:"comum", sintonia:false, valor:"750",
+   desc:"Média. CA 15 + mod. DES (máx. +2). Desvantagem em Furtividade."},
+  // ---- armaduras pesadas ----
+  {nome:"Cota de Anéis", tipo:"armadura", raridade:"comum", sintonia:false, valor:"30",
+   desc:"Pesada. CA 14. Desvantagem em Furtividade."},
+  {nome:"Cota de Malha", tipo:"armadura", raridade:"comum", sintonia:false, valor:"75",
+   desc:"Pesada. CA 16. Requer FOR 13 (senão, −3 m de deslocamento). Desvantagem em Furtividade."},
+  {nome:"Armadura de Talas", tipo:"armadura", raridade:"comum", sintonia:false, valor:"200",
+   desc:"Pesada. CA 17. Requer FOR 15. Desvantagem em Furtividade."},
+  {nome:"Armadura de Placas", tipo:"armadura", raridade:"comum", sintonia:false, valor:"1500",
+   desc:"Pesada. CA 18. Requer FOR 15. Desvantagem em Furtividade."},
+  // ---- escudo ----
+  {nome:"Escudo", tipo:"escudo", raridade:"comum", sintonia:false, valor:"10",
+   desc:"+2 de CA enquanto empunhado. Ocupa uma das mãos."}
+];
+function ensureSeed(){
+  let mudou=false;
+  const nomes=()=>new Set(D.itens.map(i=>(i.nome||"").toLowerCase()));
+  if(!D.seedItens){
+    const n=nomes();
+    SEED_ITENS.forEach(s=>{ if(!n.has(s.nome.toLowerCase())) D.itens.push({id:uid("i"), ...s}); });
+    D.seedItens=true; mudou=true;
+  }
+  if(!D.seedArmas){
+    const n=nomes();
+    SEED_ARMAS.forEach(s=>{ if(!n.has(s.nome.toLowerCase())) D.itens.push({id:uid("i"), ...s}); });
+    D.seedArmas=true; mudou=true;
+  }
+  return mudou;
+}
+function addItem(){
+  const it={id:uid("i"), nome:"", tipo:"item maravilhoso", raridade:"incomum", sintonia:false, valor:"", desc:""};
+  D.itens.unshift(it); openItem=it.id; renderItens(); save();
+}
+/* categorias do catálogo */
+const GRUPOS=[
+  {id:"consum", nome:"Consumíveis", tipos:["poção"]},
+  {id:"perg",   nome:"Pergaminhos", tipos:["pergaminho"]},
+  {id:"armas",  nome:"Armas", tipos:["arma"]},
+  {id:"armad",  nome:"Armaduras & Escudos", tipos:["armadura","escudo"]},
+  {id:"magic",  nome:"Itens Mágicos", tipos:["anel","varinha","cajado","item maravilhoso"]},
+  {id:"joias",  nome:"Joias", tipos:["joia"]},
+  {id:"equip",  nome:"Equipamento", tipos:["equipamento"]},
+  {id:"outros", nome:"Outros", tipos:["outro"]}
+];
+const grupoDe=t=>GRUPOS.find(g=>g.tipos.includes(t))||GRUPOS[GRUPOS.length-1];
+let openCats=new Set(["consum"]);
+let openSend=null;   // item com o painel de envio aberto
+function valorPO(it){
+  const v=parseFloat(String(it.valor||"").replace(",", "."));
+  return (!isNaN(v)&&v>0)?v:0;
+}
+function enviarItem(it, playerId, venda, qtd, valorUn){
+  const p=D.players.find(x=>x.id===playerId); if(!p) return;
+  qtd=Math.max(1,Number(qtd)||1);
+  p.itens=Array.isArray(p.itens)?p.itens:[];
+  p.itens.push({nome:it.nome||"item", qtd, st:"entregue", ts:Date.now()});
+  const quem=p.char.nome||"herói";
+  const rot=(qtd>1?qtd+"× ":"")+(it.nome||"item");
+  if(venda){
+    ensureEco();
+    const total=Math.round(qtd*(Number(valorUn)||0)*100)/100;
+    if(total>0){
+      D.eco.lancs.push({id:uid("l"), ts:Date.now(), desc:`Compra: ${rot} (${quem})`, qtd:-total, moeda:"po"});
+      renderEco();
+      setSaveState(`${rot} vendido a ${quem} — ${total.toLocaleString("pt-BR")} PO lançados como gasto ✧`,true);
+    }else{
+      setSaveState(`${rot} vendido a ${quem} — sem valor definido, nada lançado na economia`,true);
+    }
+  }else{
+    setSaveState(`${rot} entregue a ${quem} ✧`,true);
+  }
+  fbEnviarEntrega(p, rot, venda, venda?Math.round(qtd*(Number(valorUn)||0)*100)/100:0);
+  openSend=null;
+  renderItens(); renderPlayers(); save();
+}
+function renderItens(){
+  const q=(document.getElementById("itemSearch").value||"").toLowerCase();
+  const el=document.getElementById("itemList"); el.innerHTML="";
+  const list=D.itens.filter(i=>!q||`${i.nome} ${i.tipo} ${i.raridade} ${i.desc}`.toLowerCase().includes(q));
+  if(!list.length){ el.innerHTML=`<div class="empty">${q?"Nenhum item encontrado.":"A forja está fria. Toque em “Novo” para criar o primeiro item da campanha."}</div>`; return; }
+  GRUPOS.forEach(gr=>{
+    const doGrupo=list.filter(i=>grupoDe(i.tipo).id===gr.id);
+    if(!doGrupo.length) return;
+    const aberto=q?true:openCats.has(gr.id);   // busca expande tudo
+    const head=document.createElement("button");
+    head.className="cathead"+(aberto?" open":"");
+    head.innerHTML=`<span>${gr.nome}</span><span class="cnt">${doGrupo.length}</span><span class="arr">▸</span>`;
+    head.onclick=()=>{ openCats.has(gr.id)?openCats.delete(gr.id):openCats.add(gr.id); renderItens(); };
+    el.appendChild(head);
+    if(!aberto) return;
+    doGrupo.forEach(it=>el.appendChild(itemCard(it)));
+  });
+}
+function itemCard(it){
+  const open=openItem===it.id;
+  const sendOpen=openSend===it.id;
+  const d=document.createElement("div"); d.className="card";
+    d.innerHTML=`
+      <div class="toprow">
+        <h3></h3>
+        <span class="badge">${it.raridade}${it.sintonia?" • sintonia":""}</span>
+        <button class="popbtn" title="abrir em janela">⧉</button>
+        <button class="sendb${sendOpen?" open":""}" aria-label="enviar item a um jogador" title="entregar ou vender a um jogador">⇢</button>
+        <button class="chev${open?" open":""}" aria-label="detalhes">▸</button>
+        <button class="xbtn" aria-label="remover item">✕</button>
+      </div>
+      <div class="dt"></div>
+      <div class="sendpanel" style="display:${sendOpen?"block":"none"}"></div>
+      <div class="det" style="display:${open?"block":"none"}; margin-top:10px">
+        <div class="row r2">
+          <div><label>Nome</label><input type="text" class="f-nome" placeholder="Lâmina do Crepúsculo"></div>
+          <div><label>Tipo</label><select class="f-tipo">${TIPOSITEM.map(t=>`<option value="${t}">${t}</option>`).join("")}</select></div>
+        </div>
+        <div class="row r3">
+          <div><label>Raridade</label><select class="f-rar">${RARIDADES.map(r=>`<option value="${r}">${r}</option>`).join("")}</select></div>
+          <div><label>Valor (PO)</label><input type="text" class="f-val" placeholder="500"></div>
+          <div><label>Sintonia</label>
+            <button class="gbtn ghost f-sin" style="width:100%; padding:8px 0">${it.sintonia?"exige ✓":"não exige"}</button></div>
+        </div>
+        <label>Descrição &amp; efeitos</label>
+        <textarea class="f-desc" placeholder="Espada longa +1. Uma vez por descanso longo, ao acertar um ataque, cause 2d6 de dano necrótico extra..."></textarea>
+      </div>`;
+    d.querySelector("h3").textContent=it.nome||"(item sem nome)";
+    d.querySelector(".dt").textContent=[it.tipo, it.valor&&`${it.valor} PO`].filter(Boolean).join(" • ")||" ";
+    d.querySelector(".chev").onclick=()=>{ openItem=open?null:it.id; renderItens(); };
+    d.querySelector(".sendb").onclick=()=>{ openSend=sendOpen?null:it.id; renderItens(); };
+    d.querySelector(".popbtn").onclick=(ev)=>{ ev.stopPropagation(); openPopup("item",it.id); };
+    if(sendOpen){
+      const sp=d.querySelector(".sendpanel");
+      if(!D.players.length){
+        sp.innerHTML='<div style="font-size:.85rem; color:var(--ink-soft); padding:8px 0; font-style:italic">Nenhum jogador na galeria ainda — importe as fichas na aba Jogadores.</div>';
+      }else{
+        sp.innerHTML=`
+          <div style="display:flex; gap:6px; margin-top:10px; align-items:flex-end; flex-wrap:wrap">
+            <div style="flex:1; min-width:130px"><label>Jogador</label>
+              <select class="sp-pl">${D.players.map(p=>`<option value="${p.id}"></option>`).join("")}</select></div>
+            <div style="width:64px"><label>Qtd</label>
+              <input type="number" class="sp-qtd" min="1" value="1" style="text-align:center"></div>
+            <div style="width:84px"><label>Valor un.</label>
+              <input type="number" class="sp-val" min="0" step="any" value="${valorPO(it)||""}" placeholder="PO" style="text-align:right"></div>
+          </div>
+          <div style="display:flex; gap:6px; margin-top:8px">
+            <button class="gbtn sp-ent" style="flex:1; padding:8px 0">Entregar</button>
+            <button class="gbtn ghost sp-vnd" style="flex:1; padding:8px 0">Vender</button>
+          </div>`;
+        const sel=sp.querySelector(".sp-pl");
+        [...sel.options].forEach((o,i)=>{ o.textContent=D.players[i].char.nome||"(herói sem nome)"; });
+        const qv=()=>({q:Math.max(1,Number(sp.querySelector(".sp-qtd").value)||1),
+                       v:Math.max(0,Number(sp.querySelector(".sp-val").value)||0)});
+        const atual=()=>{ const {q,v}=qv();
+          sp.querySelector(".sp-vnd").textContent=v>0?`Vender (${(Math.round(q*v*100)/100).toLocaleString("pt-BR")} PO)`:"Vender"; };
+        sp.querySelector(".sp-qtd").oninput=atual;
+        sp.querySelector(".sp-val").oninput=atual;
+        atual();
+        sp.querySelector(".sp-ent").onclick=()=>{ const {q}=qv(); enviarItem(it, sel.value, false, q, 0); };
+        sp.querySelector(".sp-vnd").onclick=()=>{ const {q,v}=qv(); enviarItem(it, sel.value, true, q, v); };
+      }
+    }
+    d.querySelector(".xbtn").onclick=()=>{
+      if(confirm(`Remover "${it.nome||"item sem nome"}"?`)){ D.itens=D.itens.filter(x=>x.id!==it.id); renderItens(); save(); }
+    };
+    if(open){
+      const g=c=>d.querySelector(c);
+      g(".f-nome").value=it.nome; g(".f-tipo").value=it.tipo; g(".f-rar").value=it.raridade;
+      g(".f-val").value=it.valor; g(".f-desc").value=it.desc;
+      g(".f-nome").oninput=e=>{it.nome=e.target.value; d.querySelector("h3").textContent=it.nome||"(item sem nome)"; save();};
+      g(".f-tipo").onchange=e=>{it.tipo=e.target.value; renderItens(); save();};
+      g(".f-rar").onchange=e=>{it.raridade=e.target.value; renderItens(); save();};
+      g(".f-val").oninput=e=>{it.valor=e.target.value; save();};
+      g(".f-desc").oninput=e=>{it.desc=e.target.value; save();};
+      g(".f-sin").onclick=()=>{ it.sintonia=!it.sintonia; renderItens(); save(); };
+    }
+  return d;
+}
+
+/* ================== editor completo da ficha (mestre) ================== */
+const SKILLS=[["Acrobacia","des"],["Adestrar Animais","sab"],["Arcanismo","int"],["Atletismo","for"],
+ ["Atuação","car"],["Enganação","car"],["Furtividade","des"],["História","int"],
+ ["Intimidação","car"],["Intuição","sab"],["Investigação","int"],["Medicina","sab"],
+ ["Natureza","int"],["Percepção","sab"],["Persuasão","car"],["Prestidigitação","des"],
+ ["Religião","int"],["Sobrevivência","sab"]];
+const profBonus=lv=>Math.ceil(Number(lv||1)/4)+1;
+function normChar(c){
+  const b={nome:"",jogador:"",classe:"",nivel:1,especie:"",antecedente:"",subclasse:"",alinhamento:"",
+    ca:10,desloc:"9m",hp:10,hpmax:10,hptemp:0,insp:false,dsS:0,dsF:0,initExtra:0,turno:1,hplog:[],
+    abs:{for:10,des:10,con:10,int:10,sab:10,car:10},
+    profs:{},skillExtra:{},atks:[],pets:[],spells:[],slots:{},
+    moedas:{pc:0,pp:0,pe:0,po:0,pl:0},
+    carac:"",tracos:"",talentos:"",trein:"",idiomas:"",magias:"",cdmag:"",atqmag:"",equip:""};
+  const o={...b,...(c||{})};
+  o.abs={...b.abs,...(c&&c.abs||{})}; o.moedas={...b.moedas,...(c&&c.moedas||{})};
+  o.profs=c&&c.profs||{}; o.skillExtra=c&&c.skillExtra||{};
+  o.atks=Array.isArray(o.atks)?o.atks:[]; o.pets=Array.isArray(o.pets)?o.pets:[];
+  o.spells=Array.isArray(o.spells)?o.spells:[]; o.slots=o.slots||{};
+  return o;
+}
+function playerSheetEditor(p, onTitle){
+  p.char=normChar(p.char);
+  const c=p.char;
+  const root=document.createElement("div");
+  const toque=()=>{ p.up=Date.now(); save(); fbPushChar(p); };
+  const fld=(rot,val,cb,tipo,ph)=>{
+    const w=document.createElement("div");
+    w.innerHTML=`<label>${rot}</label>`;
+    const i=document.createElement(tipo==="area"?"textarea":"input");
+    if(tipo!=="area") i.type=tipo||"text";
+    if(ph) i.placeholder=ph;
+    i.value=val??""; if(tipo==="area") i.style.minHeight="64px";
+    i.oninput=ev=>{ cb(tipo==="number"?(ev.target.value===""?"":Number(ev.target.value)):ev.target.value); toque(); };
+    w.appendChild(i); return w;
+  };
+  const grid=(cols,items)=>{ const g=document.createElement("div"); g.className="row r"+cols;
+    items.forEach(x=>g.appendChild(x)); return g; };
+  const secao=(t)=>{ const s=document.createElement("div");
+    s.style.cssText="font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft);border-bottom:1px solid var(--parch-line);padding-bottom:4px;margin:14px 0 10px;text-align:center";
+    s.textContent=t; return s; };
+
+  // ---- identidade ----
+  root.appendChild(secao("Identidade"));
+  root.appendChild(grid(2,[
+    fld("Nome",c.nome,v=>{c.nome=v; if(onTitle)onTitle(v||"(herói sem nome)");}),
+    fld("Jogador",c.jogador,v=>c.jogador=v)]));
+  const CLASSES=["Bárbaro","Bardo","Bruxo","Clérigo","Druida","Feiticeiro","Guardião","Guerreiro","Ladino","Mago","Monge","Paladino"];
+  const selClasse=(()=>{
+    const w=document.createElement("div");
+    w.innerHTML='<label>Classe</label>';
+    const s=document.createElement("select");
+    s.innerHTML='<option value="">—</option>'+CLASSES.map(x=>`<option value="${x}">${x}</option>`).join("")+'<option value="__outra">Outra / multiclasse...</option>';
+    if(c.classe && !CLASSES.includes(c.classe)){
+      const o=document.createElement("option"); o.value=c.classe; o.textContent=c.classe;
+      s.insertBefore(o, s.querySelector('option[value="__outra"]'));
+    }
+    s.value=c.classe||"";
+    s.onchange=()=>{
+      let v=s.value;
+      if(v==="__outra"){
+        v=prompt("Digite a classe (ou multiclasse):", c.classe||"")||"";
+        if(v && ![...s.options].some(o=>o.value===v)){
+          const o=document.createElement("option"); o.value=v; o.textContent=v;
+          s.insertBefore(o, s.querySelector('option[value="__outra"]'));
+        }
+        s.value=v;
+      }
+      c.classe=v; toque();
+    };
+    w.appendChild(s); return w;
+  })();
+  root.appendChild(grid(2,[
+    selClasse,
+    fld("Alinhamento",c.alinhamento,v=>c.alinhamento=v)]));
+  const ESPECIES=["Aasimar","Anão","Draconato","Elfo","Gnomo","Golias","Humano","Orc","Pequenino","Tiferino"];
+  const mkSel=(rot,lista,get,set)=>{
+    const w=document.createElement("div");
+    w.innerHTML=`<label>${rot}</label>`;
+    const s=document.createElement("select");
+    s.innerHTML='<option value="">—</option>'+lista.map(x=>`<option value="${x}">${x}</option>`).join("")+'<option value="__outra">Outra...</option>';
+    const inj=v=>{ if(v && ![...s.options].some(o=>o.value===v)){
+      const o=document.createElement("option"); o.value=v; o.textContent=v;
+      s.insertBefore(o, s.querySelector('option[value="__outra"]')); } };
+    inj(get()); s.value=get()||"";
+    s.onchange=()=>{
+      let v=s.value;
+      if(v==="__outra"){ v=prompt(`Digite (${rot.toLowerCase()}):`, get()||"")||""; inj(v); s.value=v; }
+      set(v); toque();
+    };
+    w.appendChild(s); return w;
+  };
+  root.appendChild(grid(2,[
+    fld("Nível",c.nivel,v=>{c.nivel=v||1; refreshSkills();},"number"),
+    mkSel("Espécie",ESPECIES,()=>c.especie,v=>c.especie=v)]));
+  root.appendChild(grid(2,[
+    fld("Subclasse",c.subclasse,v=>c.subclasse=v),
+    fld("Antecedente (2024: dá os bônus de atributo)",c.antecedente,v=>c.antecedente=v)]));
+
+  // ---- combate ----
+  root.appendChild(secao("Combate"));
+  const hpw=document.createElement("div");
+  hpw.innerHTML=`<div class="hpline" style="justify-content:center">
+      <button class="btn-dmg">−</button><input type="number" class="e-amt" value="1" min="1">
+      <button class="btn-heal">+</button>
+      <div class="hpv"><span class="e-hp">${c.hp}</span> / <span style="font-size:.85rem;color:var(--ink-soft)" class="e-hpm">${c.hpmax}</span></div></div>`;
+  hpw.querySelector(".btn-dmg").onclick=()=>{ let a=Math.max(1,Number(hpw.querySelector(".e-amt").value)||1);
+    const tmp=Number(c.hptemp)||0;
+    if(tmp>0){ const usado=Math.min(tmp,a); c.hptemp=tmp-usado; a-=usado;
+      const ti=root.querySelector(".e-tmp"); if(ti) ti.value=c.hptemp; }
+    c.hp=Math.max(0,c.hp-a); hpw.querySelector(".e-hp").textContent=c.hp; toque(); };
+  hpw.querySelector(".btn-heal").onclick=()=>{ const a=Math.max(1,Number(hpw.querySelector(".e-amt").value)||1);
+    c.hp=Math.min(c.hpmax,c.hp+a); hpw.querySelector(".e-hp").textContent=c.hp; toque(); };
+  root.appendChild(hpw);
+  const fldTmp=fld("PV temporários",c.hptemp||0,v=>{c.hptemp=Math.max(0,v||0);},"number");
+  fldTmp.querySelector("input").classList.add("e-tmp");
+  root.appendChild(grid(2,[
+    fld("PV máx",c.hpmax,v=>{c.hpmax=Math.max(1,v||1); c.hp=Math.min(c.hp,c.hpmax);
+      hpw.querySelector(".e-hp").textContent=c.hp; hpw.querySelector(".e-hpm").textContent=c.hpmax;},"number"),
+    fldTmp]));
+  root.appendChild(grid(2,[
+    fld("CA",c.ca,v=>c.ca=v,"number"),
+    fld("Desloc.",c.desloc,v=>c.desloc=v)]));
+  root.appendChild(grid(2,[
+    fld("Bônus extra de iniciativa",c.initExtra,v=>c.initExtra=v||0,"number"),
+    (()=>{ const w=document.createElement("div");
+      w.innerHTML=`<label>Inspiração Heroica</label>`;
+      const b=document.createElement("button"); b.className="gbtn ghost"; b.style.cssText="width:100%;padding:9px 0";
+      const rot=()=>b.textContent=c.insp?"✦ ativa":"inativa";
+      rot(); b.onclick=()=>{c.insp=!c.insp; rot(); toque();};
+      w.appendChild(b); return w; })()]));
+
+  // ---- atributos ----
+  root.appendChild(secao("Atributos"));
+  const ar=document.createElement("div"); ar.className="absrow";
+  [["for","FOR"],["des","DES"],["con","CON"],["int","INT"],["sab","SAB"],["car","CAR"]].forEach(([k,nm])=>{
+    const a=document.createElement("div"); a.className="ab";
+    a.innerHTML=`<div class="nm">${nm}</div><input type="number" value="${c.abs[k]}"><div class="m">${fmt(mod(c.abs[k]))}</div>`;
+    a.querySelector("input").oninput=ev=>{ c.abs[k]=Number(ev.target.value)||10;
+      a.querySelector(".m").textContent=fmt(mod(c.abs[k])); refreshSkills(); toque(); };
+    ar.appendChild(a);
+  });
+  root.appendChild(ar);
+
+  // ---- perícias ----
+  root.appendChild(secao("Perícias"));
+  const sk=document.createElement("div"); root.appendChild(sk);
+  function refreshSkills(){
+    sk.innerHTML="";
+    SKILLS.forEach(([nm,att])=>{
+      const on=!!c.profs[nm];
+      const extra=Number(c.skillExtra[nm])||0;
+      const tot=mod(c.abs[att])+(on?profBonus(c.nivel):0)+extra;
+      const r=document.createElement("div");
+      r.style.cssText="display:flex;align-items:center;gap:8px;padding:4px 2px;border-bottom:1px dotted var(--parch-line);font-size:.88rem";
+      r.innerHTML=`<button style="width:16px;height:16px;border-radius:50%;border:2px solid var(--ink-soft);background:${on?"var(--gold)":"transparent"};cursor:pointer;flex-shrink:0"></button>
+        <span style="flex:1">${nm} <span style="color:var(--ink-soft);font-size:.7rem">(${att.toUpperCase()})</span></span>
+        <input type="number" value="${extra||""}" placeholder="±" style="width:44px;padding:2px;text-align:center;font-size:.82rem">
+        <b style="min-width:32px;text-align:right">${fmt(tot)}</b>`;
+      r.querySelector("button").onclick=()=>{ c.profs[nm]=!on; refreshSkills(); toque(); };
+      r.querySelector("input").oninput=ev=>{ c.skillExtra[nm]=Number(ev.target.value)||0;
+        r.querySelector("b").textContent=fmt(mod(c.abs[att])+((c.profs[nm])?profBonus(c.nivel):0)+(Number(c.skillExtra[nm])||0)); toque(); };
+      sk.appendChild(r);
+    });
+  }
+  refreshSkills();
+
+  // ---- ataques ----
+  root.appendChild(secao("Ataques (qtd • nome • bônus • dano)"));
+  const aw=document.createElement("div"); root.appendChild(aw);
+  function rAtq(){
+    aw.innerHTML="";
+    c.atks.forEach((a,i)=>{
+      const r=document.createElement("div"); r.className="atk";
+      r.style.gridTemplateColumns="40px 1.4fr .7fr 1fr 30px";
+      r.innerHTML=`<input type="number" min="1"><input type="text" placeholder="Espada"><input type="text" placeholder="+5"><input type="text" placeholder="1d8+3"><button class="xbtn">✕</button>`;
+      const ins=r.querySelectorAll("input");
+      ins[0].value=a.q||1; ins[1].value=a.n||""; ins[2].value=a.b||""; ins[3].value=a.d||"";
+      ins[0].oninput=e=>{a.q=Math.max(1,Number(e.target.value)||1);toque();};
+      ins[1].oninput=e=>{a.n=e.target.value;toque();};
+      ins[2].oninput=e=>{a.b=e.target.value;toque();};
+      ins[3].oninput=e=>{a.d=e.target.value;toque();};
+      r.querySelector(".xbtn").onclick=()=>{c.atks.splice(i,1);rAtq();toque();};
+      aw.appendChild(r);
+    });
+    const add=document.createElement("button"); add.className="add"; add.textContent="+ ataque";
+    add.onclick=()=>{ c.atks.push({q:1,n:"",b:"",d:""}); rAtq(); };
+    aw.appendChild(add);
+  }
+  rAtq();
+
+  // ---- companheiros ----
+  root.appendChild(secao("Companheiros & Familiares"));
+  const pw=document.createElement("div"); root.appendChild(pw);
+  function rPets(){
+    pw.innerHTML="";
+    c.pets.forEach((pt,i)=>{
+      const r=document.createElement("div");
+      r.style.cssText="border:1px solid var(--parch-line);border-radius:6px;padding:8px;margin-bottom:8px;background:#fbfbf2";
+      r.innerHTML=`<div class="row r2" style="margin-bottom:6px">
+          <div><label>Nome</label><input type="text" class="pt-n"></div>
+          <div><label>Tipo</label><input type="text" class="pt-t"></div></div>
+        <div class="row r3" style="margin-bottom:6px">
+          <div><label>CA</label><input type="number" class="pt-ca"></div>
+          <div><label>PV</label><input type="number" class="pt-pv"></div>
+          <div><label>PV máx</label><input type="number" class="pt-pm"></div></div>
+        <label>Desloc. / notas</label><input type="text" class="pt-no" style="margin-bottom:6px">
+        <button class="gbtn ghost danger" style="width:100%;padding:6px 0">remover</button>`;
+      const g=s=>r.querySelector(s);
+      g(".pt-n").value=pt.nome||""; g(".pt-t").value=pt.tipo||""; g(".pt-ca").value=pt.ca||"";
+      g(".pt-pv").value=pt.pv||0; g(".pt-pm").value=pt.pvmax||0; g(".pt-no").value=pt.notas||pt.desloc||"";
+      g(".pt-n").oninput=e=>{pt.nome=e.target.value;toque();};
+      g(".pt-t").oninput=e=>{pt.tipo=e.target.value;toque();};
+      g(".pt-ca").oninput=e=>{pt.ca=Number(e.target.value)||0;toque();};
+      g(".pt-pv").oninput=e=>{pt.pv=Number(e.target.value)||0;toque();};
+      g(".pt-pm").oninput=e=>{pt.pvmax=Number(e.target.value)||0;toque();};
+      g(".pt-no").oninput=e=>{pt.notas=e.target.value;toque();};
+      r.querySelector(".danger").onclick=()=>{ c.pets.splice(i,1); rPets(); toque(); };
+      pw.appendChild(r);
+    });
+    const add=document.createElement("button"); add.className="add"; add.textContent="+ companheiro";
+    add.onclick=()=>{ c.pets.push({id:"pt"+Date.now(),nome:"",tipo:"",ca:12,pv:5,pvmax:5,notas:""}); rPets(); };
+    pw.appendChild(add);
+  }
+  rPets();
+
+  // ---- magias ----
+  root.appendChild(secao("Magias"));
+  root.appendChild(grid(2,[
+    fld("CD de magia",c.cdmag,v=>c.cdmag=v,"number"),
+    fld("Bônus de ataque",c.atqmag,v=>c.atqmag=v,"number")]));
+  const slotsW=document.createElement("div"); root.appendChild(slotsW);
+  function rSlots(){
+    slotsW.innerHTML="<label>Espaços por círculo (usados / total)</label>";
+    for(let ci=1;ci<=9;ci++){
+      c.slots[ci]=c.slots[ci]||{t:0,u:0};
+      const s=c.slots[ci];
+      const r=document.createElement("div");
+      r.style.cssText="display:flex;align-items:center;gap:8px;padding:3px 0;font-size:.88rem";
+      r.innerHTML=`<b style="width:24px">${ci}º</b>
+        <input type="number" min="0" value="${s.u}" style="width:52px;padding:3px;text-align:center"> /
+        <input type="number" min="0" max="4" value="${s.t}" style="width:52px;padding:3px;text-align:center">`;
+      const ins=r.querySelectorAll("input");
+      ins[0].oninput=e=>{s.u=Math.max(0,Number(e.target.value)||0);toque();};
+      ins[1].oninput=e=>{s.t=Math.max(0,Math.min(4,Number(e.target.value)||0)); s.u=Math.min(s.u,s.t); toque();};
+      slotsW.appendChild(r);
+    }
+  }
+  rSlots();
+  const spW=document.createElement("div"); root.appendChild(spW);
+  function rSpells(){
+    spW.innerHTML="<label style='margin-top:8px'>Magias (● preparada • círculo • anotações)</label>";
+    c.spells.forEach((sp,i)=>{
+      const r=document.createElement("div");
+      r.style.cssText="border-bottom:1px dotted var(--parch-line);padding:5px 0";
+      r.innerHTML=`<div style="display:flex;align-items:center;gap:6px">
+          <button style="width:15px;height:15px;border-radius:50%;border:2px solid var(--ink-soft);background:${sp.p?"var(--gold)":"transparent"};cursor:pointer;flex-shrink:0"></button>
+          <input type="text" class="s-n" style="flex:1;padding:4px" placeholder="nome">
+          <select class="s-c" style="width:82px;padding:4px">${[0,1,2,3,4,5,6,7,8,9].map(ci=>`<option value="${ci}"${ci===sp.c?" selected":""}>${ci===0?"Truque":ci+"º"}</option>`).join("")}</select>
+          <button class="xbtn">✕</button></div>
+        <input type="text" class="s-d" style="margin-top:4px;padding:4px;font-size:.82rem" placeholder="alcance, dano, duração...">`;
+      r.querySelector(".s-n").value=sp.n||""; r.querySelector(".s-d").value=sp.d||"";
+      r.querySelector("button").onclick=()=>{sp.p=!sp.p;rSpells();toque();};
+      r.querySelector(".s-n").oninput=e=>{sp.n=e.target.value;toque();};
+      r.querySelector(".s-c").onchange=e=>{sp.c=Number(e.target.value);toque();};
+      r.querySelector(".s-d").oninput=e=>{sp.d=e.target.value;toque();};
+      r.querySelector(".xbtn").onclick=()=>{c.spells.splice(i,1);rSpells();toque();};
+      spW.appendChild(r);
+    });
+    const add=document.createElement("button"); add.className="add"; add.textContent="+ magia";
+    add.onclick=()=>{ c.spells.push({id:"sp"+Date.now(),n:"",c:1,p:true,d:""}); rSpells(); };
+    spW.appendChild(add);
+  }
+  rSpells();
+
+  // ---- textos ----
+  root.appendChild(secao("Textos da ficha"));
+  [["Características","carac"],["Traços de Espécie","tracos"],["Talentos","talentos"],
+   ["Treinamento & Proficiências","trein"],["Idiomas","idiomas"],["Anotações de magia","magias"],
+   ["Equipamento & Tesouro","equip"]].forEach(([rot,k])=>{
+    root.appendChild(fld(rot,c[k],v=>c[k]=v,"area"));
+  });
+
+  // ---- moedas ----
+  root.appendChild(secao("Bolsa de Moedas"));
+  const mo=document.createElement("div"); mo.className="pills"; mo.style.gridTemplateColumns="repeat(5,1fr)";
+  [["pc","PC"],["pp","PP"],["pe","PE"],["po","PO"],["pl","PL"]].forEach(([k,sig])=>{
+    const pi=document.createElement("div"); pi.className="pill";
+    pi.innerHTML=`<div class="v"><input type="number" min="0" value="${c.moedas[k]||0}" style="border:none;background:transparent;width:100%;text-align:center;font-weight:700;padding:0"></div><div class="k">${sig}</div>`;
+    pi.querySelector("input").oninput=e=>{ c.moedas[k]=Number(e.target.value)||0; toque(); };
+    mo.appendChild(pi);
+  });
+  root.appendChild(mo);
+  return root;
+}
+
+/* ================== jogadores ================== */
+let openPl=null;
+function extractChars(payload){
+  const d=payload.dados||payload;
+  if(d.char && typeof d.char==="object") return [{char:d.char}];             // envio individual ou backup v1
+  if(Array.isArray(d.chars)) return d.chars.filter(c=>c&&c.char).map(c=>({char:c.char})); // backup v2 (galeria)
+  return [];
+}
+function importPlayer(inp){
+  const f=inp.files && inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const chars=extractChars(JSON.parse(rd.result));
+      if(!chars.length) throw new Error("formato");
+      let added=0, updated=0;
+      chars.forEach(({char})=>{
+        if(!char.nome && chars.length>1) return; // ignora fichas sem nome vindas de galerias
+        const nome=(char.nome||"herói sem nome").trim();
+        let p=D.players.find(x=>(x.char.nome||"").trim().toLowerCase()===nome.toLowerCase());
+        const nivel=Number(char.nivel)||1;
+        if(p){
+          p.char=char; p.up=Date.now();
+          const last=p.hist[p.hist.length-1];
+          if(!last || last.nivel!==nivel) p.hist.push({ts:Date.now(), nivel});
+          updated++;
+        }else{
+          D.players.push({id:uid("p"), char, up:Date.now(), hist:[{ts:Date.now(), nivel}]});
+          added++;
+        }
+      });
+      renderPlayers(); save();
+      setSaveState(`fichas recebidas: ${added} nova(s), ${updated} atualizada(s) ✧`,true);
+    }catch(e){
+      alert("Este arquivo não parece ser uma ficha do Grimório do Aventureiro. Peça ao jogador o .json gerado por \u201cenviar herói ao mestre\u201d ou \u201csalvar backup\u201d.");
+    }finally{ inp.value=""; }
+  };
+  rd.readAsText(f);
+}
+function renderPlayers(){
+  const el=document.getElementById("playerList"); el.innerHTML="";
+  if(!D.players.length){ el.innerHTML='<div class="empty">Nenhuma ficha de jogador ainda.</div>'; return; }
+  [...D.players].sort((a,b)=>(b.up||0)-(a.up||0)).forEach(p=>{
+    const c=p.char, open=openPl===p.id;
+    const d=document.createElement("div"); d.className="card";
+    const sub=[c.jogador&&`👤 ${c.jogador}`, c.classe&&`${c.classe} ${c.nivel||1}`, c.subclasse, c.especie, c.antecedente].filter(Boolean).join(" • ");
+    const dt=new Date(p.up).toLocaleDateString("pt-BR",{day:"2-digit",month:"short"});
+    d.innerHTML=`
+      <div class="toprow">
+        <h3></h3>
+        <span class="badge">nível ${c.nivel||1}</span>
+        <button class="popbtn" title="abrir em janela">⧉</button>
+        <button class="chev${open?" open":""}" aria-label="detalhes">▸</button>
+        <button class="xbtn" aria-label="remover jogador">✕</button>
+      </div>
+      <div class="dt">${sub?sub+" — ":""}atualizado em ${dt}</div>
+      <div class="det" style="display:${open?"block":"none"}; margin-top:10px"></div>`;
+    d.querySelector("h3").textContent=c.nome||"(herói sem nome)";
+    d.querySelector(".chev").onclick=()=>{ openPl=open?null:p.id; renderPlayers(); };
+    d.querySelector(".popbtn").onclick=(ev)=>{ ev.stopPropagation(); openPopup("pl",p.id); };
+    d.querySelector(".xbtn").onclick=()=>{
+      if(confirm(`Remover a ficha de "${c.nome||"herói"}"?`)){ D.players=D.players.filter(x=>x.id!==p.id); renderPlayers(); save(); }
+    };
+    if(open){
+      const det=d.querySelector(".det");
+      // editor completo (tudo da aba Ficha do Grimório, editável)
+      det.appendChild(playerSheetEditor(p,(t)=>{ d.querySelector("h3").textContent=t; }));
+      // evolução
+      const hist=document.createElement("div"); hist.className="hist";
+      hist.innerHTML="<b>Evolução:</b>"+p.hist.map(hh=>`<div>• nível ${hh.nivel} — ${new Date(hh.ts).toLocaleDateString("pt-BR")}</div>`).join("");
+      det.appendChild(hist);
+      // itens do jogador (entregues / vendidos / dropados)
+      p.itens=Array.isArray(p.itens)?p.itens:[];
+      const bloco=document.createElement("div"); bloco.className="hist"; bloco.style.borderTop="1px dotted var(--parch-line)";
+      bloco.innerHTML=`<b>Itens do jogador:</b><div class="pl-itens"></div>
+        <div style="display:flex; gap:6px; margin-top:8px">
+          <input type="text" class="pl-inome" placeholder="Espada Longa +1" style="flex:1; font-size:.85rem; padding:6px">
+          <select class="pl-ist" style="width:104px; font-size:.8rem; padding:6px">
+            <option value="entregue">entregue</option><option value="vendido">vendido</option><option value="dropado">dropado</option>
+          </select>
+          <button class="gbtn" style="padding:6px 12px" type="button">+</button>
+        </div>`;
+      det.appendChild(bloco);
+      const wrap=bloco.querySelector(".pl-itens");
+      const rIt=()=>{
+        wrap.innerHTML=p.itens.length?"":'<div style="font-style:italic; padding:4px 0">nenhum item registrado</div>';
+        p.itens.forEach(pi=>{
+          const r=document.createElement("div");
+          r.style.cssText="display:flex; align-items:center; gap:8px; padding:3px 0";
+          r.innerHTML=`<span style="flex:1"></span>
+            <button class="badge st" style="cursor:pointer; background:none">${pi.st}</button>
+            <button class="xbtn" style="font-size:1rem">✕</button>`;
+          r.querySelector("span").textContent="• "+(pi.qtd&&pi.qtd>1?pi.qtd+"× ":"")+(pi.nome||"item");
+          if(pi.st==="vendido") r.querySelector("span").style.textDecoration="line-through";
+          if(pi.st==="dropado") r.querySelector("span").style.opacity=".55";
+          r.querySelector(".st").onclick=()=>{
+            const ordem=["entregue","vendido","dropado"];
+            pi.st=ordem[(ordem.indexOf(pi.st)+1)%3]; rIt(); save();
+          };
+          r.querySelector(".xbtn").onclick=()=>{ p.itens=p.itens.filter(x=>x!==pi); rIt(); save(); };
+          wrap.appendChild(r);
+        });
+      };
+      rIt();
+      bloco.querySelector(".gbtn").onclick=()=>{
+        const nome=bloco.querySelector(".pl-inome").value.trim();
+        if(!nome){ bloco.querySelector(".pl-inome").focus(); return; }
+        p.itens.push({nome, st:bloco.querySelector(".pl-ist").value, ts:Date.now()});
+        bloco.querySelector(".pl-inome").value="";
+        rIt(); save();
+      };
+    }
+    el.appendChild(d);
+  });
+}
+
+/* ================== backup & geral ================== */
+function exportData(){
+  const payload={app:"escudo-mestre", versao:2, exportadoEm:new Date().toISOString(), dados:R};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`backup-escudo-${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  setSaveState("backup baixado ✧",true);
+}
+function importData(inp){
+  const f=inp.files && inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const p=JSON.parse(rd.result);
+      const d=p.dados||p;
+      if(Array.isArray(d.camps)){
+        // backup novo: galeria completa de campanhas
+        if(!confirm(`Restaurar a galeria com ${d.camps.length} campanha(s)? Isso substitui TODAS as campanhas atuais.`)) return;
+        R={version:2, currentId:d.currentId||null, camps:d.camps.map(c=>({...c, data:normData(c.data)})),
+           fb:R.fb, wall:d.wall||R.wall, wallDim:d.wallDim??R.wallDim};
+        if(!R.camps.length) R.camps=[blankCamp("")];
+        C=R.camps.find(c=>c.id===R.currentId)||R.camps[0]; R.currentId=C.id; D=C.data;
+      }else if(Array.isArray(d.npcs)||Array.isArray(d.players)){
+        // backup antigo (uma campanha): entra como campanha nova, sem apagar nada
+        if(!confirm("Este é um backup de campanha única. Adicionar como NOVA campanha na galeria?")) return;
+        const c=blankCamp("Campanha importada");
+        c.data=normData(d);
+        R.camps.push(c); C=c; R.currentId=c.id; D=c.data;
+      }else throw new Error("formato");
+      renderAll(); save(); setSaveState("backup restaurado ✧",true);
+    }catch(e){
+      alert("Este arquivo não parece ser um backup do Escudo do Mestre.");
+    }finally{ inp.value=""; }
+  };
+  rd.readAsText(f);
+}
+async function resetAll(){
+  if(!confirm("Apagar TODAS as campanhas do Escudo (NPCs, fichas, economia, itens e jogadores)? Isso não pode ser desfeito.")) return;
+  const ui=D.ui, fb=R.fb, wall=R.wall, wallDim=R.wallDim;
+  R={version:2, currentId:null, camps:[blankCamp("")], fb, wall, wallDim};
+  C=R.camps[0]; R.currentId=C.id; D=C.data; D.ui=ui||{};
+  try{ await storDel(); }catch(e){}
+  ensureSeed();
+  renderAll(); save(); setSaveState("escudo limpo",true);
+}
+const TABS={npcs:"tabNpcs", combate:"tabCombate", eco:"tabEco", hist:"tabHist", itens:"tabItens", players:"tabPlayers", chat:"tabChat", mapa:"tabMapa", camp:"tabCamp"};
+function showTab(t){
+  for(const k in TABS){
+    document.getElementById(k).classList.toggle("on",k===t);
+    document.getElementById(TABS[k]).classList.toggle("on",k===t);
+  }
+  if(t==="chat") renderChat();
+  if(t==="mapa") renderMapa();
+}
+/* ================== pop-ups do escudo (modo desktop) ================== */
+let popZ=500;
+function popList(){ D.ui=D.ui||{}; D.ui.popups=Array.isArray(D.ui.popups)?D.ui.popups:[]; return D.ui.popups; }
+function popEntity(k,id){
+  return k==="item"?D.itens.find(x=>x.id===id)
+       : k==="mon" ?D.mons.find(x=>x.id===id)
+       : k==="npc" ?D.npcs.find(x=>x.id===id)
+       : k==="pl"  ?D.players.find(x=>x.id===id) : null;
+}
+function openPopup(k,id){
+  const ps=popList();
+  if(!ps.some(p=>p.k===k&&p.id===id)){
+    ps.push({k, id, x:60+((ps.length*36)%260), y:90+((ps.length*36)%200)});
+    save();
+  }
+  renderPopups();
+}
+function closePopup(k,id){
+  D.ui.popups=popList().filter(p=>!(p.k===k&&p.id===id));
+  save(); renderPopups();
+}
+function popTitle(k,e){
+  return k==="item"?(e.nome||"item")
+       : k==="mon" ?(e.nome||"criatura")
+       : k==="npc" ?(e.nome||"NPC")
+       : (e.char&&e.char.nome)||"jogador";
+}
+function popBody(k,e,pop,onTitle){
+  const b=document.createElement("div"); b.className="pbody";
+  const exp=!!pop.exp;
+  const absRow=(abs,edit)=>{
+    const w=document.createElement("div"); w.className="absrow";
+    [["for","FOR"],["des","DES"],["con","CON"],["int","INT"],["sab","SAB"],["car","CAR"]].forEach(([kk,nm])=>{
+      const a=document.createElement("div"); a.className="ab";
+      if(edit){
+        a.innerHTML=`<div class="nm">${nm}</div><input type="number" value="${abs[kk]??10}"><div class="m">${fmt(mod(abs[kk]))}</div>`;
+        a.querySelector("input").oninput=ev=>{ abs[kk]=Number(ev.target.value)||10;
+          a.querySelector(".m").textContent=fmt(mod(abs[kk])); save(); renderMons(); };
+      }else{
+        a.innerHTML=`<div class="nm">${nm}</div><div style="font-weight:700">${abs[kk]??"—"}</div><div class="m">${fmt(mod(abs[kk]))}</div>`;
+      }
+      w.appendChild(a);
+    });
+    return w;
+  };
+  const texto=(t)=>{ const x=document.createElement("p"); x.textContent=t||""; return x; };
+  const linha=(rot,txt)=>{ if(!txt||!String(txt).trim())return null;
+    const w=document.createElement("div"); w.style.cssText="font-size:.85rem;margin-top:6px;line-height:1.4";
+    const bb=document.createElement("b"); bb.textContent=rot+": "; w.appendChild(bb);
+    w.appendChild(document.createTextNode(String(txt))); return w; };
+  const campo=(rot,val,cb,tipo)=>{
+    const w=document.createElement("div"); w.style.marginBottom="8px";
+    w.innerHTML=`<label>${rot}</label>`;
+    const i=document.createElement(tipo==="area"?"textarea":"input");
+    if(tipo!=="area") i.type=tipo||"text";
+    i.value=val??""; if(tipo==="area") i.style.minHeight="80px";
+    i.oninput=ev=>cb(ev.target.value);
+    w.appendChild(i); return w;
+  };
+
+  /* ============ ITEM ============ */
+  if(k==="item"){
+    b.innerHTML=`<div style="margin-bottom:8px"><span class="badge">${e.raridade}${e.sintonia?" • sintonia":""}</span>
+      <span class="badge">${e.tipo}</span>${e.valor?`<span class="badge">${e.valor} PO</span>`:""}</div>`;
+    if(!exp){ b.appendChild(texto(e.desc||"(sem descrição)")); return b; }
+    b.appendChild(campo("Nome",e.nome,v=>{e.nome=v; onTitle(v||"item"); save(); renderItens();}));
+    const selT=document.createElement("div"); selT.style.marginBottom="8px";
+    selT.innerHTML=`<label>Tipo</label><select>${TIPOSITEM.map(t=>`<option value="${t}"${t===e.tipo?" selected":""}>${t}</option>`).join("")}</select>`;
+    selT.querySelector("select").onchange=ev=>{e.tipo=ev.target.value; save(); renderItens(); renderPopups();};
+    b.appendChild(selT);
+    const selR=document.createElement("div"); selR.style.marginBottom="8px";
+    selR.innerHTML=`<label>Raridade</label><select>${RARIDADES.map(r=>`<option value="${r}"${r===e.raridade?" selected":""}>${r}</option>`).join("")}</select>`;
+    selR.querySelector("select").onchange=ev=>{e.raridade=ev.target.value; save(); renderItens(); renderPopups();};
+    b.appendChild(selR);
+    b.appendChild(campo("Valor (PO)",e.valor,v=>{e.valor=v; save(); renderItens();}));
+    const sin=document.createElement("button"); sin.className="gbtn ghost";
+    sin.style.cssText="width:100%; margin-bottom:8px; padding:8px 0";
+    sin.textContent=e.sintonia?"sintonia: exige ✓":"sintonia: não exige";
+    sin.onclick=()=>{e.sintonia=!e.sintonia; save(); renderItens(); renderPopups();};
+    b.appendChild(sin);
+    b.appendChild(campo("Descrição & efeitos",e.desc,v=>{e.desc=v; save();},"area"));
+    return b;
+  }
+
+  /* ============ CRIATURA ============ */
+  if(k==="mon"){
+    const pills=document.createElement("div");
+    pills.innerHTML=`
+      <div class="pills" style="grid-template-columns:repeat(4,1fr); margin-bottom:8px">
+        <div class="pill"><div class="v">${e.ca}</div><div class="k">CA</div></div>
+        <div class="pill"><div class="v">${e.desloc||"—"}</div><div class="k">Desloc.</div></div>
+        <div class="pill"><div class="v">${e.cd||"—"}</div><div class="k">CD</div></div>
+        <div class="pill"><div class="v">${e.pv}/${e.pvmax}</div><div class="k">PV</div></div>
+      </div>
+      <div class="hpline" style="justify-content:center">
+        <button class="btn-dmg">−</button>
+        <input type="number" class="pm-amt" value="1" min="1">
+        <button class="btn-heal">+</button>
+      </div>`;
+    pills.querySelector(".btn-dmg").onclick=()=>{ const a=Math.max(1,Number(pills.querySelector(".pm-amt").value)||1);
+      e.pv=Math.max(0,e.pv-a); save(); renderMons(); renderPopups(); };
+    pills.querySelector(".btn-heal").onclick=()=>{ const a=Math.max(1,Number(pills.querySelector(".pm-amt").value)||1);
+      e.pv=Math.min(e.pvmax,e.pv+a); save(); renderMons(); renderPopups(); };
+    b.appendChild(pills);
+    if(!exp){
+      b.appendChild(absRow(e.abs||{},false));
+      (e.atks||[]).filter(a=>a.n).forEach(a=>{
+        const r=document.createElement("div"); r.style.cssText="font-size:.88rem; padding:2px 0";
+        r.innerHTML=`<b></b> ${a.b||""} ${a.d||""}`; r.querySelector("b").textContent=a.n;
+        b.appendChild(r);
+      });
+      b.appendChild(texto(e.tracos||""));
+      return b;
+    }
+    b.appendChild(campo("Nome",e.nome,v=>{e.nome=v; onTitle(v||"criatura"); save(); renderMons();}));
+    b.appendChild(campo("Tipo",e.tipo,v=>{e.tipo=v; save(); renderMons();}));
+    const grid=document.createElement("div"); grid.className="row r3";
+    [["CA","ca","number"],["PV máx","pvmax","number"],["Desloc.","desloc","text"]].forEach(([rot,kk,tp])=>{
+      const c=campo(rot,e[kk],v=>{
+        if(tp==="number"){ e[kk]=Number(v)||0; if(kk==="pvmax"){ e.pvmax=Math.max(1,e.pvmax); e.pv=Math.min(e.pv,e.pvmax); } }
+        else e[kk]=v;
+        save(); renderMons();
+      },tp);
+      grid.appendChild(c);
+    });
+    b.appendChild(grid);
+    b.appendChild(campo("CD",e.cd,v=>{e.cd=v; save(); renderMons();}));
+    b.appendChild(absRow(e.abs=e.abs||{},true));
+    const lb=document.createElement("label"); lb.textContent="Ataques"; lb.style.marginTop="8px"; b.appendChild(lb);
+    const aw=document.createElement("div");
+    const rAtks=()=>{
+      aw.innerHTML="";
+      (e.atks=e.atks||[]).forEach((a,i)=>{
+        const r=document.createElement("div"); r.className="atk";
+        r.innerHTML=`<input type="text" placeholder="Cimitarra"><input type="text" placeholder="+4"><input type="text" placeholder="1d6+2"><button class="xbtn">✕</button>`;
+        const ins=r.querySelectorAll("input");
+        ins[0].value=a.n||""; ins[1].value=a.b||""; ins[2].value=a.d||"";
+        ins[0].oninput=ev=>{a.n=ev.target.value;save();renderMons();};
+        ins[1].oninput=ev=>{a.b=ev.target.value;save();renderMons();};
+        ins[2].oninput=ev=>{a.d=ev.target.value;save();renderMons();};
+        r.querySelector(".xbtn").onclick=()=>{e.atks.splice(i,1);save();renderMons();rAtks();};
+        aw.appendChild(r);
+      });
+    };
+    rAtks(); b.appendChild(aw);
+    const addA=document.createElement("button"); addA.className="add"; addA.textContent="+ ataque";
+    addA.onclick=()=>{ e.atks.push({n:"",b:"",d:""}); rAtks(); };
+    b.appendChild(addA);
+    b.appendChild(campo("Traços & táticas",e.tracos,v=>{e.tracos=v; save(); renderMons();},"area"));
+    return b;
+  }
+
+  /* ============ NPC ============ */
+  if(k==="npc"){
+    b.innerHTML=`<div style="margin-bottom:8px"><span class="badge b-${e.atitude}">${e.atitude}</span></div>`;
+    if(!exp){
+      const dt=document.createElement("div"); dt.className="dt"; dt.style.marginBottom="6px";
+      dt.textContent=[e.papel,e.local].filter(Boolean).join(" — ");
+      b.appendChild(dt);
+      b.appendChild(texto(e.notas||"(sem notas)"));
+      return b;
+    }
+    b.appendChild(campo("Nome",e.nome,v=>{e.nome=v; onTitle(v||"NPC"); save(); renderNpcs();}));
+    const selA=document.createElement("div"); selA.style.marginBottom="8px";
+    selA.innerHTML=`<label>Atitude</label><select>
+      <option value="aliado"${e.atitude==="aliado"?" selected":""}>Aliado</option>
+      <option value="neutro"${e.atitude==="neutro"?" selected":""}>Neutro</option>
+      <option value="hostil"${e.atitude==="hostil"?" selected":""}>Hostil</option></select>`;
+    selA.querySelector("select").onchange=ev=>{e.atitude=ev.target.value; save(); renderNpcs(); renderPopups();};
+    b.appendChild(selA);
+    b.appendChild(campo("Local",e.local,v=>{e.local=v; save(); renderNpcs();}));
+    b.appendChild(campo("Papel",e.papel,v=>{e.papel=v; save(); renderNpcs();}));
+    b.appendChild(campo("Notas & segredos",e.notas,v=>{e.notas=v; save(); renderNpcs();},"area"));
+    return b;
+  }
+
+  /* ============ JOGADOR ============ */
+  if(k==="pl"){
+    const c=e.char, abs=c.abs||{};
+    const prof=Math.ceil((Number(c.nivel)||1)/4)+1;
+    const percep=10+mod(abs.sab)+((c.profs&&c.profs["Percepção"])?prof:0);
+    b.innerHTML=`
+      <div class="dt" style="margin-bottom:8px">${[c.jogador&&`👤 ${c.jogador}`,c.classe&&`${c.classe} ${c.nivel||1}`,c.subclasse,c.especie,c.antecedente].filter(Boolean).join(" • ")}</div>
+      <div class="pills" style="grid-template-columns:repeat(4,1fr); margin-bottom:8px">
+        <div class="pill"><div class="v">${c.hp??"?"}/${c.hpmax??"?"}${(Number(c.hptemp)||0)>0?`<span style="color:#2e6e6a"> +${c.hptemp}</span>`:""}</div><div class="k">PV</div></div>
+        <div class="pill"><div class="v">${c.ca??"?"}</div><div class="k">CA</div></div>
+        <div class="pill"><div class="v">${fmt(mod(abs.des)+(Number(c.initExtra)||0))}</div><div class="k">Inic.</div></div>
+        <div class="pill"><div class="v">${percep}</div><div class="k">Percep.</div></div>
+      </div>`;
+    if(!exp){ b.appendChild(absRow(abs,false)); return b; }
+    // expandido: a ficha completa, editável pelo mestre
+    b.appendChild(playerSheetEditor(e,(t)=>{ if(onTitle) onTitle(t); }));
+    const hist=document.createElement("div"); hist.className="hist";
+    hist.innerHTML="<b>Evolução:</b>"+e.hist.map(hh=>`<div>• nível ${hh.nivel} — ${new Date(hh.ts).toLocaleDateString("pt-BR")}</div>`).join("");
+    b.appendChild(hist);
+    return b;
+  }
+  return b;
+}
+function renderPopups(){
+  const layer=document.getElementById("popLayer"); layer.innerHTML="";
+  const ps=popList();
+  // remove pop-ups de entidades apagadas
+  const vivos=ps.filter(p=>popEntity(p.k,p.id));
+  if(vivos.length!==ps.length){ D.ui.popups=vivos; save(); }
+  vivos.forEach(p=>{
+    const e=popEntity(p.k,p.id);
+    const w=document.createElement("div"); w.className="popup"+(p.exp?" exp":"");
+    w.style.left=Math.max(0,Math.min(p.x, window.innerWidth-120))+"px";
+    w.style.top=Math.max(0,Math.min(p.y, window.innerHeight-80))+"px";
+    const head=document.createElement("div"); head.className="phead";
+    head.innerHTML=`<span></span><button class="pexp" aria-label="expandir" title="${p.exp?"recolher":"expandir com todas as informações"}">${p.exp?"⤡":"⤢"}</button><button class="pclose" aria-label="fechar">✕</button>`;
+    head.querySelector("span").textContent=popTitle(p.k,e);
+    head.querySelector(".pexp").onclick=(ev)=>{ ev.stopPropagation(); p.exp=!p.exp; save(); renderPopups(); };
+    head.querySelector(".pclose").onclick=(ev)=>{ ev.stopPropagation(); closePopup(p.k,p.id); };
+    w.appendChild(head);
+    w.appendChild(popBody(p.k,e,p,(t)=>{ head.querySelector("span").textContent=t; }));
+    w.onmousedown=()=>{ w.style.zIndex=++popZ; };
+    // arrastar pela barra do título
+    head.addEventListener("mousedown",(ev)=>{
+      if(ev.target.classList.contains("pclose")||ev.target.classList.contains("pexp")) return;
+      const sx=ev.clientX-w.offsetLeft, sy=ev.clientY-w.offsetTop;
+      w.style.zIndex=++popZ;
+      const move=(m)=>{ w.style.left=(m.clientX-sx)+"px"; w.style.top=(m.clientY-sy)+"px"; };
+      const up=()=>{
+        document.removeEventListener("mousemove",move);
+        document.removeEventListener("mouseup",up);
+        p.x=w.offsetLeft; p.y=w.offsetTop; save();
+      };
+      document.addEventListener("mousemove",move);
+      document.addEventListener("mouseup",up);
+      ev.preventDefault();
+    });
+    layer.appendChild(w);
+  });
+}
+
+/* ================== biblioteca rápida de regras (SRD 5.2, CC-BY-4.0) ================== */
+const REFLIB=[
+ {cat:"Condições", n:"Agarrado", d:"Deslocamento 0. Termina se quem agarra ficar Incapacitado ou se você for movido para fora do alcance dele."},
+ {cat:"Condições", n:"Amedrontado", d:"Desvantagem em ataques e testes de atributo enquanto a fonte do medo estiver à vista; não pode se aproximar dela de boa vontade."},
+ {cat:"Condições", n:"Aprisionado", d:"Deslocamento 0; desvantagem em ataques e em salvaguardas de Destreza; ataques contra você têm vantagem."},
+ {cat:"Condições", n:"Caído", d:"Só pode rastejar (ou gastar metade do deslocamento para ficar de pé); desvantagem em ataques; corpo a corpo contra você tem vantagem, à distância tem desvantagem."},
+ {cat:"Condições", n:"Cego", d:"Falha automaticamente em testes que dependam de visão; desvantagem em ataques; ataques contra você têm vantagem."},
+ {cat:"Condições", n:"Enfeitiçado", d:"Não pode atacar nem visar quem o enfeitiçou com efeitos prejudiciais; quem o enfeitiçou tem vantagem em testes sociais com você."},
+ {cat:"Condições", n:"Envenenado", d:"Desvantagem em jogadas de ataque e em testes de atributo."},
+ {cat:"Condições", n:"Exausto", d:"Níveis de 1 a 6: cada nível dá −2 em testes de d20 por nível e reduz o deslocamento em 1,5m por nível; no nível 6, morte. Descanso longo remove 1 nível."},
+ {cat:"Condições", n:"Incapacitado", d:"Não pode realizar ações nem reações."},
+ {cat:"Condições", n:"Inconsciente", d:"Incapacitado, não percebe o ambiente, cai e larga o que segura. Ataques contra você têm vantagem; acertos corpo a corpo a até 1,5m são críticos automáticos."},
+ {cat:"Condições", n:"Invisível", d:"Impossível de ver sem magia ou sentido especial. Vantagem nos seus ataques; desvantagem nos ataques contra você."},
+ {cat:"Condições", n:"Paralisado", d:"Incapacitado, não pode se mover nem falar. Falha automática em salvaguardas de Força e Destreza. Ataques contra você têm vantagem; acertos corpo a corpo a até 1,5m são críticos automáticos."},
+ {cat:"Condições", n:"Petrificado", d:"Transformado em substância sólida; incapacitado e alheio ao ambiente. Resistência a todo dano; imune a veneno e doença."},
+ {cat:"Condições", n:"Surdo", d:"Falha automaticamente em testes que dependam de audição."},
+ {cat:"Ações em Combate", n:"Ataque", d:"Use sua ação para atacar com arma ou efeito de combate corpo a corpo/à distância. Alguns recursos concedem ataques extras."},
+ {cat:"Ações em Combate", n:"Correr (Disparada)", d:"Ganha deslocamento extra igual ao seu deslocamento normal neste turno."},
+ {cat:"Ações em Combate", n:"Desengajar", d:"Seu deslocamento não provoca ataques de oportunidade até o fim do turno."},
+ {cat:"Ações em Combate", n:"Esconder-se", d:"Faz um teste de Furtividade para tentar ficar Indetectável; exige estar fora da vista de quem você quer enganar."},
+ {cat:"Ações em Combate", n:"Ajudar", d:"Concede vantagem ao próximo teste ou ataque de um aliado, ou ajuda ele numa tarefa."},
+ {cat:"Ações em Combate", n:"Preparar", d:"Escolhe um gatilho e guarda uma ação (ou reação) para usar quando ele ocorrer."},
+ {cat:"Ações em Combate", n:"Usar um Objeto", d:"Interage com um segundo objeto no turno (o primeiro é de graça)."},
+ {cat:"Ações em Combate", n:"Procurar", d:"Faz um teste de Percepção, Investigação ou Intuição para notar algo."},
+ {cat:"Ações em Combate", n:"Lançar Magia", d:"Conjura uma magia com o tempo de conjuração indicado nela (geralmente uma ação)."},
+ {cat:"Dificuldade (CD)", n:"Muito fácil", d:"CD 5"},
+ {cat:"Dificuldade (CD)", n:"Fácil", d:"CD 10"},
+ {cat:"Dificuldade (CD)", n:"Médio", d:"CD 15"},
+ {cat:"Dificuldade (CD)", n:"Difícil", d:"CD 20"},
+ {cat:"Dificuldade (CD)", n:"Muito difícil", d:"CD 25"},
+ {cat:"Dificuldade (CD)", n:"Quase impossível", d:"CD 30"},
+ {cat:"Descanso", n:"Descanso Curto", d:"Pelo menos 1 hora de atividade leve. Pode gastar Dados de Vida para recuperar PV."},
+ {cat:"Descanso", n:"Descanso Longo", d:"Pelo menos 8 horas (até 1h de atividade leve). Recupera todos os PV, metade dos Dados de Vida (mín. 1), espaços de magia e a maioria dos recursos de classe; remove 1 nível de Exaustão."}
+];
+let libView="regras";
+function libTab(v){
+  libView=v;
+  document.getElementById("libTabRegras").classList.toggle("on",v==="regras");
+  document.getElementById("libTabPdfs").classList.toggle("on",v==="pdfs");
+  document.getElementById("libBusca").style.display=v==="regras"?"block":"none";
+  document.getElementById("pdfAddBtn").style.display=v==="pdfs"?"block":"none";
+  if(v==="regras") libRender(); else pdfRenderLista();
+}
+/* ---- PDFs pessoais (guardados no aparelho via IndexedDB) ---- */
+let pdfDb=null;
+function pdfIdb(){
+  return new Promise((resolve,reject)=>{
+    if(pdfDb) return resolve(pdfDb);
+    if(!("indexedDB" in window)) return reject("sem indexedDB");
+    const req=indexedDB.open("escudoPdfsDB",1);
+    req.onupgradeneeded=()=>{ req.result.createObjectStore("arquivos"); };
+    req.onsuccess=()=>{ pdfDb=req.result; resolve(pdfDb); };
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function pdfGet(key){
+  try{ const db=await pdfIdb();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction("arquivos","readonly").objectStore("arquivos").get(key);
+      tx.onsuccess=()=>res(tx.result); tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){ return null; }
+}
+async function pdfSet(key,val){
+  try{ const db=await pdfIdb();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction("arquivos","readwrite").objectStore("arquivos").put(val,key);
+      tx.onsuccess=()=>res(); tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){ alert("Não consegui salvar o PDF — pode ser falta de espaço no aparelho."); }
+}
+async function pdfDel(key){
+  try{ const db=await pdfIdb();
+    await new Promise(res=>{
+      const tx=db.transaction("arquivos","readwrite").objectStore("arquivos").delete(key);
+      tx.onsuccess=()=>res(); tx.onerror=()=>res();
+    });
+  }catch(e){}
+}
+async function pdfIndice(){ return (await pdfGet("_index"))||[]; }
+async function pdfArquivoEscolhido(inp){
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  if(f.type!=="application/pdf" && !f.name.toLowerCase().endsWith(".pdf")){
+    alert("Escolha um arquivo PDF."); inp.value=""; return;
+  }
+  const id="pdf"+Date.now()+Math.random().toString(36).slice(2,5);
+  await pdfSet(id,f);
+  const idx=await pdfIndice();
+  idx.push({id, nome:f.name, ts:Date.now()});
+  await pdfSet("_index",idx);
+  inp.value="";
+  pdfRenderLista();
+}
+async function pdfAbrir(id){
+  const f=await pdfGet(id); if(!f){ alert("Não encontrei esse arquivo."); return; }
+  const url=URL.createObjectURL(f);
+  window.open(url,"_blank");
+}
+async function pdfRemover(id){
+  if(!confirm("Remover este PDF do aparelho?")) return;
+  await pdfDel(id);
+  const idx=(await pdfIndice()).filter(x=>x.id!==id);
+  await pdfSet("_index",idx);
+  pdfRenderLista();
+}
+async function pdfRenderLista(){
+  const el=document.getElementById("libLista"); if(!el) return;
+  const idx=await pdfIndice();
+  el.innerHTML="";
+  if(!idx.length){ el.innerHTML='<div class="empty" style="padding:14px 4px">Nenhum PDF adicionado ainda. Toque em "+ adicionar PDF" para escolher um arquivo do seu aparelho.</div>'; return; }
+  idx.slice().sort((a,b)=>b.ts-a.ts).forEach(it=>{
+    const d=document.createElement("div"); d.className="pdfitem";
+    d.innerHTML=`<span class="pdfic">📄</span><span class="pdfnome"></span>
+      <button class="gbtn ghost" style="padding:6px 10px">abrir</button>
+      <button class="xbtn" style="width:30px;height:30px">✕</button>`;
+    d.querySelector(".pdfnome").textContent=it.nome;
+    d.querySelector(".gbtn").onclick=()=>pdfAbrir(it.id);
+    d.querySelector(".xbtn").onclick=()=>pdfRemover(it.id);
+    el.appendChild(d);
+  });
+}
+function libRender(){
+  const q=(document.getElementById("libBusca").value||"").toLowerCase();
+  const el=document.getElementById("libLista"); el.innerHTML="";
+  const cats=[...new Set(REFLIB.map(x=>x.cat))];
+  let achou=false;
+  cats.forEach(cat=>{
+    const itens=REFLIB.filter(x=>x.cat===cat && (!q||(x.n+" "+x.d).toLowerCase().includes(q)));
+    if(!itens.length) return;
+    achou=true;
+    const hh=document.createElement("div"); hh.className="libcat"; hh.textContent=cat; el.appendChild(hh);
+    itens.forEach(it=>{
+      const d=document.createElement("div"); d.className="libitem";
+      d.innerHTML=`<b></b><div class="libd"></div>`;
+      d.querySelector("b").textContent=it.n;
+      d.querySelector(".libd").textContent=it.d;
+      el.appendChild(d);
+    });
+  });
+  if(!achou) el.innerHTML='<div class="empty" style="padding:14px 4px">Nada encontrado.</div>';
+}
+function libPosicionar(){
+  const btn=document.getElementById("libBtn"), panel=document.getElementById("libPanel");
+  const br=btn.getBoundingClientRect();
+  let x=br.left, y=br.top-8-Math.min(420,window.innerHeight*0.7);
+  if(y<10) y=br.bottom+8;
+  x=Math.max(8,Math.min(window.innerWidth-350,x));
+  panel.style.left=x+"px"; panel.style.top=y+"px";
+}
+function libAbrir(){
+  libPosicionar();
+  document.getElementById("libPanel").style.display="flex";
+  libTab(libView);
+}
+function libFechar(){
+  document.getElementById("libPanel").style.display="none";
+}
+(function libBind(){
+  function bind(){
+    const btn=document.getElementById("libBtn"), panel=document.getElementById("libPanel"), head=document.getElementById("libHead");
+    if(!btn||btn.dataset.bound) return;
+    btn.dataset.bound="1";
+    D.ui=D.ui||{};
+    if(D.ui.libBtn&&D.ui.libBtn.x!=null){
+      btn.style.left=D.ui.libBtn.x+"px"; btn.style.top=D.ui.libBtn.y+"px";
+      btn.style.right="auto"; btn.style.bottom="auto";
+    }
+    const pos=e=>{ const t=(e.touches&&e.touches[0])||e; return [t.clientX,t.clientY]; };
+    const arrastavel=(handle, aoSoltarMover, aoTocar)=>{
+      let moveu=false;
+      const down=e=>{
+        moveu=false;
+        const [sx0,sy0]=pos(e);
+        const sx=sx0-handle.parentElement.offsetLeft, sy=sy0-handle.parentElement.offsetTop;
+        const move=m=>{
+          m.preventDefault();
+          const [mx,my]=pos(m);
+          if(Math.abs(mx-sx0)+Math.abs(my-sy0)>6) moveu=true;
+          if(moveu) aoSoltarMover(Math.max(0,Math.min(window.innerWidth-50,mx-sx)), Math.max(0,Math.min(window.innerHeight-40,my-sy)));
+        };
+        const up=()=>{
+          document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up);
+          document.removeEventListener("touchmove",move); document.removeEventListener("touchend",up);
+          if(!moveu && aoTocar) aoTocar();
+        };
+        document.addEventListener("mousemove",move); document.addEventListener("mouseup",up);
+        document.addEventListener("touchmove",move,{passive:false}); document.addEventListener("touchend",up);
+      };
+      handle.addEventListener("mousedown",down);
+      handle.addEventListener("touchstart",down,{passive:true});
+    };
+    arrastavel(btn, (x,y)=>{
+      btn.style.left=x+"px"; btn.style.top=y+"px"; btn.style.right="auto"; btn.style.bottom="auto";
+    }, ()=>{
+      D.ui=D.ui||{}; D.ui.libBtn={x:btn.offsetLeft,y:btn.offsetTop}; save();
+      if(panel.style.display==="none") libAbrir(); else libFechar();
+    });
+    arrastavel(head, (x,y)=>{ panel.style.left=x+"px"; panel.style.top=y+"px"; }, null);
+  }
+  if(document.readyState!=="loading") bind(); else document.addEventListener("DOMContentLoaded",bind);
+  document.addEventListener("DOMContentLoaded",()=>setTimeout(bind,300));
+})();
+
+/* ================== música ambiente ================== */
+const AUDIO_CATS={batalha:{emoji:"⚔️",nome:"Batalha"}, suspense:{emoji:"🕵️",nome:"Suspense"}, descontracao:{emoji:"🍻",nome:"Descontração"}};
+let audioDb=null;
+let audioFiles={};     // categoria -> File (mantém .name)
+let audioUrls={};      // categoria -> object URL
+let audioAtual=null;   // categoria tocando agora
+const audioEl=new Audio();
+audioEl.loop=true;
+audioEl.addEventListener("ended",()=>{}); // loop cuida disso, mas por segurança
+
+function audioIdb(){
+  return new Promise((resolve,reject)=>{
+    if(audioDb) return resolve(audioDb);
+    if(!("indexedDB" in window)) return reject("sem indexedDB");
+    const req=indexedDB.open("escudoMusica",1);
+    req.onupgradeneeded=()=>{ req.result.createObjectStore("faixas"); };
+    req.onsuccess=()=>{ audioDb=req.result; resolve(audioDb); };
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function audioIdbGet(cat){
+  try{
+    const db=await audioIdb();
+    return await new Promise((res,rej)=>{
+      const tx=db.transaction("faixas","readonly").objectStore("faixas").get(cat);
+      tx.onsuccess=()=>res(tx.result||null); tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){ return null; }
+}
+async function audioIdbSet(cat,file){
+  try{
+    const db=await audioIdb();
+    await new Promise((res,rej)=>{
+      const tx=db.transaction("faixas","readwrite").objectStore("faixas").put(file,cat);
+      tx.onsuccess=()=>res(); tx.onerror=()=>rej(tx.error);
+    });
+  }catch(e){}
+}
+async function audioIdbDel(cat){
+  try{
+    const db=await audioIdb();
+    await new Promise((res)=>{
+      const tx=db.transaction("faixas","readwrite").objectStore("faixas").delete(cat);
+      tx.onsuccess=()=>res(); tx.onerror=()=>res();
+    });
+  }catch(e){}
+}
+async function audioCarregarSalvas(){
+  for(const cat in AUDIO_CATS){
+    const f=await audioIdbGet(cat);
+    if(f){ audioFiles[cat]=f; audioUrls[cat]=URL.createObjectURL(f); }
+  }
+  audioAtualizarBotoes();
+}
+function audioToggleBar(){
+  const ex=document.getElementById("audioExpand");
+  ex.style.display=ex.style.display==="none"?"flex":"none";
+}
+function audioAtualizarBotoes(){
+  document.querySelectorAll(".abtn").forEach(b=>{
+    const cat=b.dataset.cat;
+    b.classList.toggle("tem", !!audioUrls[cat]);
+    b.classList.toggle("playing", audioAtual===cat && !audioEl.paused);
+  });
+}
+function audioTap(cat){
+  if(!audioUrls[cat]){ audioEscolherArquivo(cat); return; }
+  if(audioAtual===cat && !audioEl.paused){ audioEl.pause(); audioAtualizarBotoes(); return; }
+  audioEl.src=audioUrls[cat];
+  audioEl.currentTime=0;
+  audioEl.play().catch(()=>{});
+  audioAtual=cat;
+  audioAtualizarBotoes();
+}
+function audioStopAll(){
+  audioEl.pause(); audioAtual=null; audioAtualizarBotoes();
+}
+function audioSetVol(v){
+  audioEl.volume=Math.max(0,Math.min(1,Number(v)/100));
+}
+function audioEscolherArquivo(cat){
+  const inp=document.getElementById("audioFileInput");
+  inp.onchange=async()=>{
+    const f=inp.files&&inp.files[0]; if(!f){ inp.value=""; return; }
+    if(audioUrls[cat]) URL.revokeObjectURL(audioUrls[cat]);
+    audioFiles[cat]=f; audioUrls[cat]=URL.createObjectURL(f);
+    await audioIdbSet(cat,f);
+    audioAtualizarBotoes();
+    audioRenderGerenciar();
+    audioTap(cat);   // já toca a faixa recém-escolhida
+    inp.value="";
+  };
+  inp.click();
+}
+function audioRemoverFaixa(cat){
+  if(audioAtual===cat) audioStopAll();
+  if(audioUrls[cat]) URL.revokeObjectURL(audioUrls[cat]);
+  delete audioUrls[cat]; delete audioFiles[cat];
+  audioIdbDel(cat);
+  audioAtualizarBotoes(); audioRenderGerenciar();
+}
+function audioAbrirGerenciar(){
+  document.getElementById("audioGerenciar").style.display="flex";
+  audioRenderGerenciar();
+}
+function audioFecharGerenciar(){
+  document.getElementById("audioGerenciar").style.display="none";
+}
+function audioRenderGerenciar(){
+  const el=document.getElementById("audioListaFaixas"); if(!el) return;
+  el.innerHTML="";
+  for(const cat in AUDIO_CATS){
+    const info=AUDIO_CATS[cat];
+    const r=document.createElement("div"); r.className="afRow";
+    r.innerHTML=`<div class="afic">${info.emoji}</div>
+      <div class="afnome"><div class="aftit">${info.nome}</div><div class="afarq"></div></div>
+      <button class="gbtn ghost" style="padding:6px 10px">escolher</button>
+      <button class="xbtn" style="width:32px;height:32px">✕</button>`;
+    r.querySelector(".afarq").textContent=audioFiles[cat]?audioFiles[cat].name:"nenhuma faixa";
+    r.querySelector(".gbtn").onclick=()=>audioEscolherArquivo(cat);
+    r.querySelector(".xbtn").onclick=()=>audioRemoverFaixa(cat);
+    el.appendChild(r);
+  }
+}
+document.addEventListener("DOMContentLoaded",audioCarregarSalvas);
+if(document.readyState!=="loading") audioCarregarSalvas();
+
+(function audioBindDrag(){
+  function bind(){
+    const bar=document.getElementById("audioBar"), handle=document.getElementById("audioToggleBtn");
+    if(!bar||!handle||handle.dataset.bound) return;
+    handle.dataset.bound="1";
+    D.ui=D.ui||{};
+    if(D.ui.audioWin&&D.ui.audioWin.x!=null){
+      bar.style.left=D.ui.audioWin.x+"px"; bar.style.top=D.ui.audioWin.y+"px"; bar.style.bottom="auto";
+    }
+    const pos=e=>{ const t=(e.touches&&e.touches[0])||e; return [t.clientX,t.clientY]; };
+    let moveu=false;
+    const down=e=>{
+      moveu=false;
+      const [sx0,sy0]=pos(e);
+      const sx=sx0-bar.offsetLeft, sy=sy0-bar.offsetTop;
+      bar.style.zIndex=++popZ;
+      const move=m=>{
+        m.preventDefault();
+        const [mx,my]=pos(m);
+        if(Math.abs(mx-sx0)+Math.abs(my-sy0)>6) moveu=true;
+        bar.style.left=Math.max(0,Math.min(window.innerWidth-50,mx-sx))+"px";
+        bar.style.top=Math.max(0,Math.min(window.innerHeight-40,my-sy))+"px";
+        bar.style.bottom="auto";
+      };
+      const up=()=>{
+        document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up);
+        document.removeEventListener("touchmove",move); document.removeEventListener("touchend",up);
+        if(moveu){
+          D.ui=D.ui||{}; D.ui.audioWin={x:bar.offsetLeft, y:bar.offsetTop}; save();
+        }else{
+          audioToggleBar();   // foi só um toque, não um arraste: abre/fecha normalmente
+        }
+      };
+      document.addEventListener("mousemove",move); document.addEventListener("mouseup",up);
+      document.addEventListener("touchmove",move,{passive:false}); document.addEventListener("touchend",up);
+    };
+    handle.addEventListener("mousedown",down);
+    handle.addEventListener("touchstart",down,{passive:true});
+  }
+  if(document.readyState!=="loading") bind(); else document.addEventListener("DOMContentLoaded",bind);
+  document.addEventListener("DOMContentLoaded",()=>setTimeout(bind,300));
+})();
+
+/* ================== mesa online (Firebase) ================== */
+const FB_CFG_PADRAO={apiKey:"AIzaSyDHi6kej7Nmhv_u932lzRqfOXeW2j79cS8",authDomain:"mesa-dnd-8076d.firebaseapp.com",projectId:"mesa-dnd-8076d",storageBucket:"mesa-dnd-8076d.firebasestorage.app",messagingSenderId:"869616715507",appId:"1:869616715507:web:8fcb61c67b5f4c3bc69986",measurementId:"G-60QWNY0FJG"};
+function fbParseCfg(txt){
+  if(!txt||!txt.trim()) return null;
+  let t=txt.trim();
+  // aceita o bloco inteiro copiado do console ("const firebaseConfig = {...};")
+  const a=t.indexOf("{"), b=t.lastIndexOf("}");
+  if(a>=0&&b>a) t=t.slice(a,b+1);
+  try{ const o=JSON.parse(t); return (o&&o.apiKey&&o.projectId)?o:null; }catch(e){}
+  // tolerante ao formato JavaScript: aspas simples, chaves sem aspas, vírgula final, comentários
+  let s=t.replace(/\/\/[^\n]*/g,"")
+         .replace(/'/g,'"')
+         .replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:/g,'$1"$2":')
+         .replace(/,\s*}/g,"}");
+  try{ const o=JSON.parse(s); return (o&&o.apiKey&&o.projectId)?o:null; }catch(e){ return null; }
+}
+let fbApp=null, fbDb=null, fbUnsub=null, fbOk=false;
+function fbStatus(t,ok){ const e=document.getElementById("fbStatus");
+  e.textContent=t; e.style.color=ok?"var(--gold)":"var(--ink-soft)"; }
+function fbBindUi(){
+  const cfg=document.getElementById("fbCfg"), sala=document.getElementById("fbSala");
+  R.fb=R.fb||{};
+  cfg.value=R.fb.cfg||""; sala.value=(C&&C.sala)||"";
+  if(!cfg.dataset.bound){ cfg.dataset.bound="1";
+    cfg.oninput=e=>{ R.fb.cfg=e.target.value; save(); }; }
+  if(!sala.dataset.bound){ sala.dataset.bound="1";
+    sala.oninput=e=>{ C.sala=e.target.value.trim().toUpperCase(); save(); }; }
+}
+function fbGerarSala(){
+  const abc="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s="";
+  for(let i=0;i<6;i++) s+=abc[Math.floor(Math.random()*abc.length)];
+  C.sala=s; document.getElementById("fbSala").value=s; save();
+  fbStatus("código gerado — toque em conectar e compartilhe: "+s,true);
+}
+async function fbConectar(manual){
+  if(fbUnsub){ try{fbUnsub();}catch(e){} fbUnsub=null; }
+  fbOk=false;
+  if(typeof firebase==="undefined"){ fbStatus("Firebase indisponível — verifique a conexão (funciona no app instalado)"); return; }
+  R.fb=R.fb||{};
+  if(!C.sala){ if(manual) fbStatus("defina ou gere o código da sala"); return; }
+  const cfg=fbParseCfg(R.fb.cfg)||FB_CFG_PADRAO;
+  try{
+    if(!fbApp){ fbApp=firebase.initializeApp(cfg); }
+    fbDb=firebase.firestore();
+    await firebase.auth().signInAnonymously();
+    const sala=C.sala, campId=C.id;
+    fbUnsub=fbDb.collection("salas").doc(sala).collection("herois")
+      .onSnapshot(snap=>{
+        if(!C||C.id!==campId) return;   // trocou de campanha
+        let mudou=false;
+        snap.forEach(doc=>{
+          const d=doc.data(); if(!d||!d.char) return;
+          if(d.editor==="mestre") return;   // eco das nossas próprias edições
+          if(fbUpsertHeroi(doc.id, d.char)) mudou=true;
+        });
+        if(mudou){ renderPlayers(); renderPopups(); save(); }
+      }, err=>{ fbStatus("erro na sala: "+(err.code||err.message)); fbOk=false; });
+    fbChatLast=Date.now();
+    const uChat=fbDb.collection("salas").doc(sala).collection("chat")
+      .onSnapshot(snap=>{
+        fbChat=[];
+        snap.forEach(doc=>{ const m=doc.data(); if(m&&m.texto) fbChat.push(m); });
+        fbChat.sort((a,b)=>(a.ts||0)-(b.ts||0));
+        if(fbChat.length>120) fbChat=fbChat.slice(-120);
+        const novas=fbChat.filter(m=>chatVisivel(m)&&m.ts>fbChatLast&&m.deId!=="mestre");
+        if(novas.length){ fbChatLast=novas[novas.length-1].ts;
+          novas.forEach(m=>mostrarToast(m)); }
+        renderChat();
+      }, ()=>{});
+    const uHerois=fbUnsub;
+    fbUnsub=()=>{ try{uHerois();}catch(e){} try{uChat();}catch(e){} };
+    fbOk=true;
+    fbStatus("✦ sala "+sala+" conectada — fichas dos jogadores sincronizando",true);
+  }catch(e){
+    fbStatus("falha ao conectar: "+(e.code||e.message));
+  }
+}
+function fbUpsertHeroi(remoteId, char){
+  const nome=(char.nome||"herói sem nome").trim();
+  let p=D.players.find(x=>x.remoteId===remoteId)
+       ||D.players.find(x=>(x.char.nome||"").trim().toLowerCase()===nome.toLowerCase());
+  const nivel=Number(char.nivel)||1;
+  if(p){
+    const antes=JSON.stringify(p.char);
+    p.char=char; p.remoteId=remoteId; p.up=Date.now();
+    const last=p.hist[p.hist.length-1];
+    if(!last||last.nivel!==nivel) p.hist.push({ts:Date.now(), nivel});
+    return antes!==JSON.stringify(char);
+  }
+  D.players.push({id:uid("p"), remoteId, char, up:Date.now(), hist:[{ts:Date.now(), nivel}], itens:[]});
+  return true;
+}
+let fbPushTimers={};
+function fbPushChar(p){
+  if(!fbOk||!fbDb||!C||!C.sala||!p.remoteId) return;   // só heróis conectados pela sala
+  clearTimeout(fbPushTimers[p.id]);
+  fbPushTimers[p.id]=setTimeout(()=>{
+    try{
+      fbDb.collection("salas").doc(C.sala).collection("herois").doc(p.remoteId)
+        .set({nome:p.char.nome||"", char:JSON.parse(JSON.stringify(p.char)), up:Date.now(), editor:"mestre"});
+    }catch(e){}
+  },1200);
+}
+function fbEnviarEntrega(p, rot, venda, totalPO){
+  if(!fbOk||!fbDb||!C.sala) return;
+  try{
+    fbDb.collection("salas").doc(C.sala).collection("entregas").add({
+      heroiId:p.remoteId||null,
+      heroiNome:(p.char.nome||"").trim(),
+      texto:rot, venda:!!venda, totalPO:Number(totalPO)||0,
+      ts:Date.now(), recebida:false
+    });
+  }catch(e){}
+}
+
+/* ================== avisos de chat (pop-up) ================== */
+function mostrarToast(m){
+  const layer=document.getElementById("toastLayer"); if(!layer) return;
+  const priv=m.para&&m.para!==""?"🔒 ":"✉ ";
+  const el=document.createElement("div"); el.className="toast";
+  el.innerHTML=`<span class="ic">${priv}</span><div class="tt"><b></b><br></div>`;
+  el.querySelector("b").textContent=m.de||"?";
+  el.querySelector(".tt").appendChild(document.createTextNode(m.texto||""));
+  const sair=()=>{ if(!el.parentNode) return; el.classList.add("out"); setTimeout(()=>el.remove(),260); };
+  el.onclick=()=>{ sair(); showTab("chat"); };
+  layer.appendChild(el);
+  setTimeout(sair,5000);
+}
+
+/* ================== mapa da campanha ================== */
+let mapaImg=null;              // objeto Image() carregado
+let mapaTool=null;             // 'pin' | 'draw' | null
+let mapaCorAtual="#c0392b";
+let mapaDesenhando=false, mapaStrokeAtual=null;
+
+function mapaCarregarImagem(cb){
+  if(!D.mapa.img){ mapaImg=null; cb&&cb(); return; }
+  const im=new Image();
+  im.onload=()=>{ mapaImg=im; cb&&cb(); };
+  im.src=D.mapa.img;
+}
+function renderMapa(){
+  const vazio=document.getElementById("mapaVazio"), ferr=document.getElementById("mapaFerramentas");
+  if(!D.mapa.img){ vazio.style.display="block"; ferr.style.display="none"; return; }
+  vazio.style.display="none"; ferr.style.display="block";
+  mapaCarregarImagem(mapaDesenhar);
+  document.getElementById("mtPin").classList.toggle("on",mapaTool==="pin");
+  document.getElementById("mtDraw").classList.toggle("on",mapaTool==="draw");
+  document.querySelectorAll(".mtcor").forEach(b=>b.classList.toggle("on", b.dataset.c===mapaCorAtual));
+}
+function mapaDesenhar(){
+  const cv=document.getElementById("mapaCanvas"); if(!cv||!mapaImg) return;
+  cv.width=mapaImg.naturalWidth; cv.height=mapaImg.naturalHeight;
+  const ctx=cv.getContext("2d");
+  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.drawImage(mapaImg,0,0,cv.width,cv.height);
+  (D.mapa.ops||[]).forEach(op=>mapaDesenharOp(ctx,op,cv.width,cv.height));
+}
+function mapaDesenharOp(ctx,op,W,H){
+  if(op.type==="pin"){
+    const x=op.x*W, y=op.y*H;
+    ctx.beginPath(); ctx.arc(x,y,Math.max(8,W*0.012),0,Math.PI*2);
+    ctx.fillStyle=op.color; ctx.fill();
+    ctx.lineWidth=Math.max(2,W*0.002); ctx.strokeStyle="#fff"; ctx.stroke();
+    if(op.label){
+      ctx.font=`bold ${Math.max(14,W*0.018)}px sans-serif`;
+      ctx.fillStyle="#000"; ctx.strokeStyle="#fff"; ctx.lineWidth=Math.max(3,W*0.003);
+      ctx.textAlign="center";
+      ctx.strokeText(op.label, x, y-Math.max(12,W*0.018));
+      ctx.fillText(op.label, x, y-Math.max(12,W*0.018));
+    }
+  }else if(op.type==="stroke" && op.points && op.points.length>1){
+    ctx.beginPath();
+    ctx.moveTo(op.points[0][0]*W, op.points[0][1]*H);
+    for(let i=1;i<op.points.length;i++) ctx.lineTo(op.points[i][0]*W, op.points[i][1]*H);
+    ctx.strokeStyle=op.color; ctx.lineWidth=Math.max(3,W*0.005);
+    ctx.lineCap="round"; ctx.lineJoin="round"; ctx.stroke();
+  }
+}
+function mapaFerramenta(t){ mapaTool=(mapaTool===t)?null:t; renderMapa(); }
+function mapaCor(c){ mapaCorAtual=c; renderMapa(); }
+function mapaPos(e,cv){
+  const r=cv.getBoundingClientRect();
+  const t=(e.touches&&e.touches[0])||e;
+  return [ Math.min(1,Math.max(0,(t.clientX-r.left)/r.width)), Math.min(1,Math.max(0,(t.clientY-r.top)/r.height)) ];
+}
+function mapaBind(){
+  const cv=document.getElementById("mapaCanvas"); if(!cv||cv.dataset.bound) return;
+  cv.dataset.bound="1";
+  const down=e=>{
+    if(!mapaTool) return; e.preventDefault();
+    const [x,y]=mapaPos(e,cv);
+    if(mapaTool==="pin"){
+      const label=(prompt("Rótulo do marcador (opcional):")||"").slice(0,30);
+      D.mapa.ops.push({type:"pin", x, y, color:mapaCorAtual, label});
+      save(); mapaDesenhar();
+    }else if(mapaTool==="draw"){
+      mapaDesenhando=true;
+      mapaStrokeAtual={type:"stroke", color:mapaCorAtual, points:[[x,y]]};
+    }
+  };
+  const move=e=>{
+    if(!mapaDesenhando||!mapaStrokeAtual) return; e.preventDefault();
+    const [x,y]=mapaPos(e,cv);
+    mapaStrokeAtual.points.push([x,y]);
+    mapaDesenhar();
+    const ctx=cv.getContext("2d");
+    mapaDesenharOp(ctx,mapaStrokeAtual,cv.width,cv.height);
+  };
+  const up=()=>{
+    if(mapaDesenhando&&mapaStrokeAtual&&mapaStrokeAtual.points.length>1){
+      D.mapa.ops.push(mapaStrokeAtual); save();
+    }
+    mapaDesenhando=false; mapaStrokeAtual=null; mapaDesenhar();
+  };
+  cv.addEventListener("mousedown",down); cv.addEventListener("mousemove",move); window.addEventListener("mouseup",up);
+  cv.addEventListener("touchstart",down,{passive:false}); cv.addEventListener("touchmove",move,{passive:false}); cv.addEventListener("touchend",up);
+}
+function mapaDesfazer(){ D.mapa.ops.pop(); save(); mapaDesenhar(); }
+function mapaLimpar(){
+  if(!D.mapa.ops.length) return;
+  if(!confirm("Apagar todas as marcações do mapa?")) return;
+  D.mapa.ops=[]; save(); mapaDesenhar();
+}
+function mapaEscolher(inp){
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1800;
+      const esc=Math.min(1, MAX/Math.max(img.width,img.height));
+      const cv=document.createElement("canvas");
+      cv.width=Math.round(img.width*esc); cv.height=Math.round(img.height*esc);
+      cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      const data=cv.toDataURL("image/jpeg",0.85);
+      if(data.length>4500000){ alert("Essa imagem ficou grande demais — tente uma versão menor do mapa."); return; }
+      D.mapa={img:data, ops:[]};
+      save(); renderMapa(); mapaBind();
+      setSaveState("mapa carregado ✧",true);
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+  inp.value="";
+}
+function mapaRemover(){
+  if(!confirm("Remover o mapa da campanha? As marcações também serão perdidas.")) return;
+  D.mapa={img:"", ops:[]}; save(); renderMapa();
+  setSaveState("mapa removido",true);
+}
+function mapaComporFlat(cb){
+  // compõe imagem + marcações num único PNG/JPEG achatado, comprimindo para caber no Firestore (~1MB por doc)
+  mapaCarregarImagem(()=>{
+    if(!mapaImg) return cb(null);
+    const tentativas=[[1400,0.8],[1100,0.65],[900,0.5],[700,0.4]];
+    let i=0;
+    const tentar=()=>{
+      if(i>=tentativas.length) return cb(null,true);
+      const [MAX,Q]=tentativas[i++];
+      const esc=Math.min(1, MAX/Math.max(mapaImg.naturalWidth,mapaImg.naturalHeight));
+      const cv=document.createElement("canvas");
+      cv.width=Math.round(mapaImg.naturalWidth*esc); cv.height=Math.round(mapaImg.naturalHeight*esc);
+      const ctx=cv.getContext("2d");
+      ctx.drawImage(mapaImg,0,0,cv.width,cv.height);
+      (D.mapa.ops||[]).forEach(op=>mapaDesenharOp(ctx,op,cv.width,cv.height));
+      const data=cv.toDataURL("image/jpeg",Q);
+      if(data.length<700000) return cb(data);
+      tentar();
+    };
+    tentar();
+  });
+}
+function mapaEnviar(){
+  if(!D.mapa.img){ setSaveState("carregue um mapa primeiro"); return; }
+  if(!fbOk||!fbDb||!C.sala){ setSaveState("conecte a sala primeiro (aba Campanhas → Mesa Online)"); return; }
+  document.getElementById("mapaStatus").textContent="preparando envio...";
+  mapaComporFlat((data,falhou)=>{
+    if(!data){
+      document.getElementById("mapaStatus").textContent="não consegui comprimir o mapa o bastante — tente uma imagem menor.";
+      return;
+    }
+    fbDb.collection("salas").doc(C.sala).collection("mapa").doc("atual").set({img:data, ts:Date.now()})
+      .then(()=>{ document.getElementById("mapaStatus").textContent="✦ mapa enviado aos jogadores!"; })
+      .catch(()=>{ document.getElementById("mapaStatus").textContent="falha ao enviar — tente de novo."; });
+  });
+}
+
+/* ================== chat da mesa (mestre) ================== */
+let fbChat=[], fbChatLast=0;
+function chatVisivel(m){
+  return m.para==="" || m.para==="mestre" || m.deId==="mestre";
+}
+function chatParaOpcoes(){
+  const sel=document.getElementById("chatPara"); if(!sel) return;
+  const atual=sel.value;
+  sel.innerHTML='<option value="">para todos</option>';
+  D.players.filter(p=>p.remoteId).forEach(p=>{
+    const o=document.createElement("option");
+    o.value=p.remoteId;
+    o.textContent="🔒 "+(p.char.jogador||p.char.nome||"jogador");
+    sel.appendChild(o);
+  });
+  if([...sel.options].some(o=>o.value===atual)) sel.value=atual;
+}
+function renderChat(){
+  chatParaOpcoes();
+  const el=document.getElementById("chatMsgs"); if(!el) return;
+  const list=fbChat.filter(chatVisivel);
+  if(!list.length){
+    el.innerHTML='<div class="empty">'+(fbOk?"nenhuma mensagem ainda":"conecte a sala (aba Campanhas → Mesa Online) para conversar")+'</div>';
+    return;
+  }
+  el.innerHTML="";
+  list.forEach(m=>{
+    const d=document.createElement("div");
+    d.className="cmsg"+(m.deId==="mestre"?" eu":"");
+    const hora=new Date(m.ts||0).toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    let priv="";
+    if(m.para==="mestre") priv="🔒 só para você";
+    else if(m.para!==""){
+      const p=D.players.find(x=>x.remoteId===m.para);
+      priv="🔒 para "+((p&&(p.char.jogador||p.char.nome))||"jogador");
+    }
+    d.innerHTML=`<div class="who"><b></b>${priv?`<span class="priv">${priv}</span>`:""}<span style="margin-left:auto">${hora}</span></div><div class="tx"></div>`;
+    d.querySelector("b").textContent=m.de||"?";
+    d.querySelector(".tx").textContent=m.texto;
+    el.appendChild(d);
+  });
+  el.scrollTop=el.scrollHeight;
+}
+function fbEnviarChat(){
+  const inp=document.getElementById("chatTxt");
+  const txt=(inp.value||"").trim();
+  if(!txt) return;
+  if(!fbOk||!fbDb||!C.sala){ setSaveState("conecte a sala primeiro (aba Campanhas → Mesa Online)"); return; }
+  try{
+    fbDb.collection("salas").doc(C.sala).collection("chat").add({
+      de:"⚜ Mestre", deId:"mestre", para:document.getElementById("chatPara").value||"",
+      texto:txt.slice(0,500), ts:Date.now()
+    });
+    inp.value="";
+  }catch(e){ setSaveState("falha ao enviar — tente de novo"); }
+}
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter" && document.activeElement && document.activeElement.id==="chatTxt") fbEnviarChat();
+});
+
+/* ================== wallpaper ================== */
+function applyWall(){
+  const dim=((R.wallDim??82))/100;
+  if(R.wall){
+    document.body.style.backgroundImage=
+      `linear-gradient(rgba(26,30,38,${dim}), rgba(26,30,38,${Math.min(1,dim+0.04)})), url(${R.wall})`;
+    document.body.style.backgroundSize="cover";
+    document.body.style.backgroundPosition="center";
+    document.body.style.backgroundAttachment="fixed";
+  }else{
+    document.body.style.backgroundImage="";
+    document.body.style.backgroundSize="";
+    document.body.style.backgroundPosition="";
+    document.body.style.backgroundAttachment="";
+  }
+  const sl=document.getElementById("wallDim");
+  if(sl){ sl.value=R.wallDim??82;
+    if(!sl.dataset.bound){ sl.dataset.bound="1";
+      sl.oninput=e=>{ R.wallDim=Number(e.target.value); applyWall(); save(); }; } }
+}
+function wallEscolher(inp){
+  const f=inp.files && inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      // reduz a imagem para caber no armazenamento sem perder o visual
+      const MAX=1600;
+      const esc=Math.min(1, MAX/Math.max(img.width,img.height));
+      const cv=document.createElement("canvas");
+      cv.width=Math.round(img.width*esc); cv.height=Math.round(img.height*esc);
+      cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      const data=cv.toDataURL("image/jpeg",0.78);
+      if(data.length>3500000){
+        alert("Essa imagem ficou grande demais para guardar — tente uma foto menor ou mais simples.");
+        return;
+      }
+      R.wall=data; applyWall(); save();
+      setSaveState("wallpaper aplicado ✧",true);
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(f);
+  inp.value="";
+}
+function wallRemover(){
+  R.wall=""; applyWall(); save();
+  setSaveState("wallpaper removido",true);
+}
+
+/* ================== modo desktop / celular ================== */
+function modoAtual(){
+  if(D.ui && (D.ui.modo==="desktop"||D.ui.modo==="celular")) return D.ui.modo;   // escolha do mestre
+  return window.innerWidth>=900 ? "desktop" : "celular";                          // automático pela tela
+}
+function applyMode(){
+  const m=modoAtual();
+  document.body.classList.toggle("desktop", m==="desktop");
+  const b=document.getElementById("modeBtn");
+  b.textContent = m==="desktop" ? "📱 celular" : "🖥 desktop";
+  b.title = m==="desktop" ? "Mudar para o modo celular" : "Mudar para o modo desktop";
+}
+function toggleMode(){
+  D.ui=D.ui||{};
+  D.ui.modo = modoAtual()==="desktop" ? "celular" : "desktop";
+  applyMode(); save();
+}
+window.addEventListener("resize", ()=>{ if(!D.ui||!D.ui.modo) applyMode(); });   // segue a tela enquanto for automático
+
+/* ================== galeria de campanhas ================== */
+function sHash(t){ let x=0; for(const ch of String(t)){ x=(x*31+ch.charCodeAt(0))>>>0; } return "h"+x.toString(36); }
+function senhaStatus(){
+  const e=document.getElementById("senhaStatus");
+  if(e) e.textContent=(C&&C.senha)?"🔒 protegida por senha":"🔓 sem senha";
+}
+function campSenha(){
+  if(C.senha){
+    const atual=prompt("Senha atual da campanha:")||"";
+    if(sHash(atual)!==C.senha){ alert("Senha incorreta."); return; }
+  }
+  const nova=prompt("Nova senha (deixe vazio para remover a senha):");
+  if(nova===null) return;
+  C.senha=nova?sHash(nova):"";
+  senhaStatus(); renderCampList(); save();
+  setSaveState(nova?"🔒 campanha protegida ✧":"senha removida",true);
+}
+function pedeSenha(c){
+  if(!c.senha) return true;
+  const s=prompt(`Senha da campanha "${c.nome||"sem nome"}":`)||"";
+  if(sHash(s)===c.senha) return true;
+  alert("Senha incorreta.");
+  return false;
+}
+function campHeader(){
+  document.getElementById("campName").textContent="🏰 "+((C&&C.nome)||"campanha sem nome");
+  senhaStatus();
+  const i=document.getElementById("campNome");
+  i.value=(C&&C.nome)||"";
+  if(!i.dataset.bound){
+    i.dataset.bound="1";
+    i.oninput=e=>{ C.nome=e.target.value; campHeader(); renderCampList(); save(); };
+  }
+}
+function renderCampList(){
+  const el=document.getElementById("campList"); el.innerHTML="";
+  [...R.camps].sort((a,b)=>(b.up||0)-(a.up||0)).forEach(c=>{
+    const atual=c.id===R.currentId;
+    const d=document.createElement("div"); d.className="card";
+    if(atual) d.style.outline="2px solid var(--gold)";
+    const dt=new Date(c.up||Date.now()).toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"});
+    const resumo=`${(c.data.npcs||[]).length} NPCs • ${(c.data.players||[]).length} jogadores • ${(c.data.itens||[]).length} itens`;
+    d.innerHTML=`<h3></h3>
+      <div class="dt">${resumo} — última alteração: ${dt}${atual?"  ✦ aberta":""}</div>
+      <div style="display:flex; gap:8px; margin-top:10px">
+        <button class="gbtn" style="flex:1">Abrir campanha</button>
+        <button class="gbtn ghost danger delc">Apagar</button>
+      </div>`;
+    d.querySelector("h3").textContent=(c.senha?"🔒 ":"")+(c.nome||"(campanha sem nome)");
+    d.querySelector(".gbtn").onclick=()=>openCamp(c.id);
+    d.querySelector(".delc").onclick=()=>delCamp(c.id);
+    el.appendChild(d);
+  });
+}
+function openCamp(id){
+  const c=R.camps.find(x=>x.id===id); if(!c) return;
+  if(id!==R.currentId && !pedeSenha(c)) return;
+  C=c; R.currentId=id; D=c.data;
+  openNpc=openMon=openItem=openSend=openPl=openPet=null; editingHist=null;
+  ensureEco(); ensureSeed();
+  renderAll(); save(); showTab("npcs");
+  fbConectar(false);
+  setSaveState(`campanha "${c.nome||"sem nome"}" aberta ✧`,true);
+}
+var openPet=null; // compatibilidade
+function newCamp(){
+  const c=blankCamp("");
+  R.camps.push(c);
+  C=c; R.currentId=c.id; D=c.data;
+  ensureSeed();
+  renderAll(); save(); showTab("camp");
+  document.getElementById("campNome").focus();
+  setSaveState("nova campanha criada — dê um nome a ela ✧",true);
+}
+function delCamp(id){
+  const c=R.camps.find(x=>x.id===id); if(!c) return;
+  if(!pedeSenha(c)) return;
+  if(!confirm(`Apagar a campanha "${c.nome||"sem nome"}" com tudo dentro (NPCs, itens, economia, jogadores)? Isso não pode ser desfeito.`)) return;
+  R.camps=R.camps.filter(x=>x.id!==id);
+  if(!R.camps.length){ R.camps=[blankCamp("")]; ensureSeedFor(R.camps[0]); }
+  if(R.currentId===id){
+    C=[...R.camps].sort((a,b)=>(b.up||0)-(a.up||0))[0];
+    R.currentId=C.id; D=C.data;
+    renderAll();
+  }
+  renderCampList(); save();
+}
+function ensureSeedFor(c){ const bak=D; D=c.data; ensureSeed(); D=bak; }
+function renderAll(){ renderNpcs(); renderMons(); renderEco(); renderHist(); renderItens(); renderPlayers(); renderPopups(); campHeader(); renderCampList(); fbBindUi(); applyMode(); applyWall(); renderMapa(); mapaBind(); }
+load();
+</script>
+</body>
+</html>

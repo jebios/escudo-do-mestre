@@ -1,0 +1,12 @@
+{
+  "name": "Escudo do Mestre",
+  "short_name": "Escudo",
+  "description": "Campanhas, NPCs, combate, economia e jogadores — a mesa do mestre",
+  "lang": "pt-BR", "start_url": "./index.html", "scope": "./",
+  "display": "standalone", "orientation": "any",
+  "background_color": "#282e39", "theme_color": "#3a4250",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
