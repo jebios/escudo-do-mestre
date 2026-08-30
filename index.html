@@ -619,11 +619,20 @@ if ("serviceWorker" in navigator) {
 <section id="mapa" class="tab">
   <div class="card">
     <h2>Mapa da Campanha</h2>
-    <div id="mapaVazio" class="empty" style="padding:20px 0">Nenhum mapa carregado ainda.</div>
+    <div class="row r2" style="margin-bottom:10px">
+      <select id="mapaSelect" style="flex:1"></select>
+      <div style="display:flex; gap:6px">
+        <button class="gbtn ghost" style="padding:8px 10px" onclick="mapaNovo()" title="criar novo mapa">＋</button>
+        <button class="gbtn ghost" style="padding:8px 10px" onclick="mapaRenomear()" title="renomear este mapa">✎</button>
+        <button class="gbtn ghost danger" style="padding:8px 10px" onclick="mapaExcluirMapa()" title="excluir este mapa">🗑</button>
+      </div>
+    </div>
+    <div id="mapaVazio" class="empty" style="padding:20px 0">Nenhuma imagem neste mapa ainda.</div>
     <div id="mapaFerramentas" style="display:none">
       <div class="maptools">
         <button class="mtbtn" id="mtPin" onclick="mapaFerramenta('pin')" title="marcador">📍</button>
         <button class="mtbtn" id="mtDraw" onclick="mapaFerramenta('draw')" title="desenhar">✏️</button>
+        <button class="mtbtn" id="mtApagar" onclick="mapaFerramenta('apagar')" title="apagar uma marcação (toque nela)">🩹</button>
         <span class="mtcores">
           <button class="mtcor" data-c="#c0392b" style="background:#c0392b" onclick="mapaCor('#c0392b')"></button>
           <button class="mtcor" data-c="#2e7d32" style="background:#2e7d32" onclick="mapaCor('#2e7d32')"></button>
@@ -741,6 +750,7 @@ if ("serviceWorker" in navigator) {
       <button class="gbtn ghost" style="padding:11px 0" onclick="document.getElementById('importFile').click()">restaurar</button>
     </div>
     <input type="file" id="importFile" accept=".json,application/json" style="display:none" onchange="importData(this)">
+    <button class="gbtn ghost danger" style="width:100%; padding:9px 0; margin-top:10px" onclick="resetAll()">apagar todos os dados deste aparelho</button>
   </div>
 
   <div class="card" style="margin-top:14px">
@@ -874,15 +884,15 @@ if ("serviceWorker" in navigator) {
 
 <div id="popLayer"></div>
 
-<footer>
-  <button onclick="resetAll()">apagar todos os dados</button>
-</footer>
+<footer></footer>
 
 <script>
 /* ================== estado & armazenamento ================== */
 const KEY="escudo-mestre-v2", KEY_OLD="escudo-mestre-v1";
 function blankData(){
-  return {version:1, npcs:[], mons:[], eco:{lancs:[], notas:""}, hist:[], itens:[], players:[], ui:{}, mapa:{img:"", ops:[]}, notasList:[]};
+  const mapId="mp"+Date.now();
+  return {version:1, npcs:[], mons:[], eco:{lancs:[], notas:""}, hist:[], itens:[], players:[], ui:{},
+          mapas:[{id:mapId, nome:"Mapa 1", img:"", ops:[]}], mapaAtualId:mapId, notasList:[]};
 }
 function blankCamp(nome){
   return {id:"cp"+Date.now()+Math.random().toString(36).slice(2,6), nome:nome||"", up:Date.now(), data:blankData()};
@@ -920,8 +930,15 @@ function normData(d){
   out.mons=Array.isArray(out.mons)?out.mons:[];
   out.players=Array.isArray(out.players)?out.players:[];
   out.ui=out.ui||{};
-  out.mapa=out.mapa||{img:"", ops:[]};
-  out.mapa.ops=Array.isArray(out.mapa.ops)?out.mapa.ops:[];
+  out.mapas=Array.isArray(out.mapas)?out.mapas:[];
+  if(out.mapa && (out.mapa.img||(""+"").length) && !out.mapas.length){
+    // migração do formato antigo (um mapa só) para a galeria de mapas
+    out.mapas.push({id:"mp"+Date.now(), nome:"Mapa 1", img:out.mapa.img||"", ops:Array.isArray(out.mapa.ops)?out.mapa.ops:[]});
+    out.mapaAtualId=out.mapas[0].id;
+  }
+  delete out.mapa;
+  if(!out.mapas.length){ out.mapas.push({id:"mp"+Date.now(), nome:"Mapa 1", img:"", ops:[]}); out.mapaAtualId=out.mapas[0].id; }
+  if(!out.mapaAtualId || !out.mapas.some(m=>m.id===out.mapaAtualId)) out.mapaAtualId=out.mapas[0].id;
   out.notasList=Array.isArray(out.notasList)?out.notasList:[];
   if(out.histNotas && out.histNotas.trim() && !out.notasList.length){
     out.notasList.push({id:"nt"+Date.now(), titulo:"Anotações", texto:out.histNotas, up:Date.now()});
@@ -1607,7 +1624,7 @@ function enviarItem(it, playerId, venda, qtd, valorUn){
   }else{
     setSaveState(`${rot} entregue a ${quem} ✧`,true);
   }
-  fbEnviarEntrega(p, rot, venda, venda?Math.round(qtd*(Number(valorUn)||0)*100)/100:0);
+  fbEnviarEntrega(p, rot, venda, venda?Math.round(qtd*(Number(valorUn)||0)*100)/100:0, it.desc||"");
   openSend=null;
   renderItens(); renderPlayers(); save();
 }
@@ -2046,7 +2063,11 @@ function importPlayer(inp){
   };
   rd.readAsText(f);
 }
+function playersSeguro(){
+  return !(document.activeElement && document.activeElement.closest && document.activeElement.closest("#playerList"));
+}
 function renderPlayers(){
+  if(!playersSeguro()) return;   // não reconstrói enquanto o mestre digita na ficha expandida
   const el=document.getElementById("playerList"); el.innerHTML="";
   if(!D.players.length){ el.innerHTML='<div class="empty">Nenhuma ficha de jogador ainda.</div>'; return; }
   [...D.players].sort((a,b)=>(b.up||0)-(a.up||0)).forEach(p=>{
@@ -2124,19 +2145,44 @@ function renderPlayers(){
 }
 
 /* ================== backup & geral ================== */
-function exportData(){
-  const payload={app:"escudo-mestre", versao:2, exportadoEm:new Date().toISOString(), dados:R};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+function blobParaBase64(blob){
+  return new Promise((res,rej)=>{
+    const rd=new FileReader();
+    rd.onload=()=>res(rd.result);
+    rd.onerror=rej;
+    rd.readAsDataURL(blob);
+  });
+}
+async function exportData(){
+  setSaveState("preparando backup (incluindo PDFs e músicas)...");
+  const pdfs=[];
+  try{
+    const idx=await pdfIndice();
+    for(const it of idx){
+      const f=await pdfGet(it.id);
+      if(f) pdfs.push({id:it.id, nome:it.nome, ts:it.ts, dados:await blobParaBase64(f)});
+    }
+  }catch(e){}
+  const musicas=[];
+  try{
+    for(const cat in AUDIO_CATS){
+      const f=audioFiles[cat];
+      if(f) musicas.push({cat, nome:f.name, dados:await blobParaBase64(f)});
+    }
+  }catch(e){}
+  const payload={app:"escudo-mestre", versao:2, exportadoEm:new Date().toISOString(), dados:R, pdfs, musicas};
+  const blob=new Blob([JSON.stringify(payload)],{type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
   a.download=`backup-escudo-${new Date().toISOString().slice(0,10)}.json`;
   a.click(); URL.revokeObjectURL(a.href);
-  setSaveState("backup baixado ✧",true);
+  const mb=(blob.size/1024/1024).toFixed(1);
+  setSaveState(`backup baixado (${mb} MB, com ${pdfs.length} PDF(s) e ${musicas.length} música(s)) ✧`,true);
 }
 function importData(inp){
   const f=inp.files && inp.files[0]; if(!f) return;
   const rd=new FileReader();
-  rd.onload=()=>{
+  rd.onload=async ()=>{
     try{
       const p=JSON.parse(rd.result);
       const d=p.dados||p;
@@ -2154,7 +2200,37 @@ function importData(inp){
         c.data=normData(d);
         R.camps.push(c); C=c; R.currentId=c.id; D=c.data;
       }else throw new Error("formato");
-      renderAll(); save(); setSaveState("backup restaurado ✧",true);
+      renderAll(); save();
+      // restaura PDFs guardados no backup (se houver)
+      if(Array.isArray(p.pdfs) && p.pdfs.length){
+        for(const it of p.pdfs){
+          try{
+            const resp=await fetch(it.dados);
+            const blob=await resp.blob();
+            const file=new File([blob], it.nome, {type:"application/pdf"});
+            await pdfSet(it.id, file);
+          }catch(e){}
+        }
+        const idxAtual=await pdfIndice();
+        const idsAtuais=new Set(idxAtual.map(x=>x.id));
+        const novos=p.pdfs.filter(x=>!idsAtuais.has(x.id)).map(x=>({id:x.id, nome:x.nome, ts:x.ts||Date.now()}));
+        if(novos.length){ await pdfSet("_index",[...idxAtual,...novos]); }
+      }
+      // restaura músicas guardadas no backup (se houver)
+      if(Array.isArray(p.musicas) && p.musicas.length){
+        for(const it of p.musicas){
+          try{
+            const resp=await fetch(it.dados);
+            const blob=await resp.blob();
+            const file=new File([blob], it.nome, {type:"audio/mpeg"});
+            if(audioUrls[it.cat]) URL.revokeObjectURL(audioUrls[it.cat]);
+            audioFiles[it.cat]=file; audioUrls[it.cat]=URL.createObjectURL(file);
+            await audioIdbSet(it.cat,file);
+          }catch(e){}
+        }
+        audioAtualizarBotoes();
+      }
+      setSaveState("backup restaurado ✧",true);
     }catch(e){
       alert("Este arquivo não parece ser um backup do Escudo do Mestre.");
     }finally{ inp.value=""; }
@@ -2378,7 +2454,14 @@ function popBody(k,e,pop,onTitle){
   }
   return b;
 }
+function popupsSeguro(){
+  // evita reconstruir (e perder o foco/digitação) só quando o mestre está DIGITANDO —
+  // sem isso, o próprio botão de expandir/fechar (que também fica focado ao ser clicado) travava o pop-up.
+  const a=document.activeElement;
+  return !(a && a.closest && a.closest("#popLayer") && ["INPUT","TEXTAREA","SELECT"].includes(a.tagName));
+}
 function renderPopups(){
+  if(!popupsSeguro()) return;   // não reconstrói enquanto o mestre digita dentro de um pop-up
   const layer=document.getElementById("popLayer"); layer.innerHTML="";
   const ps=popList();
   // remove pop-ups de entidades apagadas
@@ -3112,7 +3195,7 @@ async function fbConectar(manual){
           if(d.editor==="mestre") return;   // eco das nossas próprias edições
           if(fbUpsertHeroi(doc.id, d.char)) mudou=true;
         });
-        if(mudou){ renderPlayers(); renderPopups(); save(); }
+        if(mudou){ renderPlayers(); if(popupsSeguro()) renderPopups(); save(); }
       }, err=>{ fbStatus("erro na sala: "+(err.code||err.message)); fbOk=false; });
     fbChatLast=Date.now();
     const uChat=fbDb.collection("salas").doc(sala).collection("chat")
@@ -3160,13 +3243,13 @@ function fbPushChar(p){
     }catch(e){}
   },1200);
 }
-function fbEnviarEntrega(p, rot, venda, totalPO){
+function fbEnviarEntrega(p, rot, venda, totalPO, descricao){
   if(!fbOk||!fbDb||!C.sala) return;
   try{
     fbDb.collection("salas").doc(C.sala).collection("entregas").add({
       heroiId:p.remoteId||null,
       heroiNome:(p.char.nome||"").trim(),
-      texto:rot, venda:!!venda, totalPO:Number(totalPO)||0,
+      texto:rot, venda:!!venda, totalPO:Number(totalPO)||0, descricao:descricao||"",
       ts:Date.now(), recebida:false
     });
   }catch(e){}
@@ -3186,25 +3269,65 @@ function mostrarToast(m){
   setTimeout(sair,5000);
 }
 
-/* ================== mapa da campanha ================== */
+/* ================== mapa da campanha (múltiplos mapas) ================== */
 let mapaImg=null;              // objeto Image() carregado
-let mapaTool=null;             // 'pin' | 'draw' | null
+let mapaTool=null;             // 'pin' | 'draw' | 'apagar' | null
 let mapaCorAtual="#c0392b";
 let mapaDesenhando=false, mapaStrokeAtual=null;
 
+function mapaAtual(){
+  D.mapas=Array.isArray(D.mapas)?D.mapas:[];
+  if(!D.mapas.length){ const id="mp"+Date.now(); D.mapas.push({id,nome:"Mapa 1",img:"",ops:[]}); D.mapaAtualId=id; }
+  let m=D.mapas.find(x=>x.id===D.mapaAtualId);
+  if(!m){ m=D.mapas[0]; D.mapaAtualId=m.id; }
+  m.ops=Array.isArray(m.ops)?m.ops:[];
+  return m;
+}
+function mapaRenderSeletor(){
+  const sel=document.getElementById("mapaSelect"); if(!sel) return;
+  const m=mapaAtual();
+  sel.innerHTML=D.mapas.map(x=>`<option value="${x.id}"${x.id===m.id?" selected":""}></option>`).join("");
+  [...sel.options].forEach((o,i)=>{ o.textContent=D.mapas[i].nome||"(sem nome)"; });
+  sel.onchange=()=>{ D.mapaAtualId=sel.value; save(); renderMapa(); };
+}
+function mapaNovo(){
+  const nome=(prompt("Nome do novo mapa:","Mapa "+(D.mapas.length+1))||"").trim();
+  if(!nome) return;
+  const id="mp"+Date.now()+Math.random().toString(36).slice(2,5);
+  D.mapas.push({id, nome, img:"", ops:[]});
+  D.mapaAtualId=id; save(); renderMapa();
+}
+function mapaRenomear(){
+  const m=mapaAtual();
+  const nome=(prompt("Novo nome para este mapa:", m.nome||"")||"").trim();
+  if(!nome) return;
+  m.nome=nome; save(); mapaRenderSeletor();
+}
+function mapaExcluirMapa(){
+  if(D.mapas.length<=1){ alert("Essa é a única campanha de mapa — não dá pra excluir a última. Crie outra antes, se quiser."); return; }
+  const m=mapaAtual();
+  if(!confirm(`Excluir o mapa "${m.nome}" e todas as suas marcações?`)) return;
+  D.mapas=D.mapas.filter(x=>x.id!==m.id);
+  D.mapaAtualId=D.mapas[0].id;
+  save(); renderMapa();
+}
 function mapaCarregarImagem(cb){
-  if(!D.mapa.img){ mapaImg=null; cb&&cb(); return; }
+  const m=mapaAtual();
+  if(!m.img){ mapaImg=null; cb&&cb(); return; }
   const im=new Image();
   im.onload=()=>{ mapaImg=im; cb&&cb(); };
-  im.src=D.mapa.img;
+  im.src=m.img;
 }
 function renderMapa(){
+  mapaRenderSeletor();
+  const m=mapaAtual();
   const vazio=document.getElementById("mapaVazio"), ferr=document.getElementById("mapaFerramentas");
-  if(!D.mapa.img){ vazio.style.display="block"; ferr.style.display="none"; return; }
+  if(!m.img){ vazio.style.display="block"; ferr.style.display="none"; return; }
   vazio.style.display="none"; ferr.style.display="block";
   mapaCarregarImagem(mapaDesenhar);
   document.getElementById("mtPin").classList.toggle("on",mapaTool==="pin");
   document.getElementById("mtDraw").classList.toggle("on",mapaTool==="draw");
+  document.getElementById("mtApagar").classList.toggle("on",mapaTool==="apagar");
   document.querySelectorAll(".mtcor").forEach(b=>b.classList.toggle("on", b.dataset.c===mapaCorAtual));
 }
 function mapaDesenhar(){
@@ -3213,7 +3336,7 @@ function mapaDesenhar(){
   const ctx=cv.getContext("2d");
   ctx.clearRect(0,0,cv.width,cv.height);
   ctx.drawImage(mapaImg,0,0,cv.width,cv.height);
-  (D.mapa.ops||[]).forEach(op=>mapaDesenharOp(ctx,op,cv.width,cv.height));
+  mapaAtual().ops.forEach(op=>mapaDesenharOp(ctx,op,cv.width,cv.height));
 }
 function mapaDesenharOp(ctx,op,W,H){
   if(op.type==="pin"){
@@ -3243,19 +3366,36 @@ function mapaPos(e,cv){
   const t=(e.touches&&e.touches[0])||e;
   return [ Math.min(1,Math.max(0,(t.clientX-r.left)/r.width)), Math.min(1,Math.max(0,(t.clientY-r.top)/r.height)) ];
 }
+function mapaAcharOpProxima(x,y){
+  // procura a marcação mais próxima do toque, do topo (mais recente) para o fundo
+  const ops=mapaAtual().ops, RAIO=0.035;
+  for(let i=ops.length-1;i>=0;i--){
+    const op=ops[i];
+    if(op.type==="pin"){
+      if(Math.hypot(op.x-x, op.y-y)<=RAIO) return i;
+    }else if(op.type==="stroke"){
+      if(op.points.some(p=>Math.hypot(p[0]-x,p[1]-y)<=RAIO)) return i;
+    }
+  }
+  return -1;
+}
 function mapaBind(){
   const cv=document.getElementById("mapaCanvas"); if(!cv||cv.dataset.bound) return;
   cv.dataset.bound="1";
   const down=e=>{
     if(!mapaTool) return; e.preventDefault();
     const [x,y]=mapaPos(e,cv);
+    const m=mapaAtual();
     if(mapaTool==="pin"){
       const label=(prompt("Rótulo do marcador (opcional):")||"").slice(0,30);
-      D.mapa.ops.push({type:"pin", x, y, color:mapaCorAtual, label});
+      m.ops.push({type:"pin", x, y, color:mapaCorAtual, label});
       save(); mapaDesenhar();
     }else if(mapaTool==="draw"){
       mapaDesenhando=true;
       mapaStrokeAtual={type:"stroke", color:mapaCorAtual, points:[[x,y]]};
+    }else if(mapaTool==="apagar"){
+      const idx=mapaAcharOpProxima(x,y);
+      if(idx>=0){ m.ops.splice(idx,1); save(); mapaDesenhar(); }
     }
   };
   const move=e=>{
@@ -3268,18 +3408,19 @@ function mapaBind(){
   };
   const up=()=>{
     if(mapaDesenhando&&mapaStrokeAtual&&mapaStrokeAtual.points.length>1){
-      D.mapa.ops.push(mapaStrokeAtual); save();
+      mapaAtual().ops.push(mapaStrokeAtual); save();
     }
     mapaDesenhando=false; mapaStrokeAtual=null; mapaDesenhar();
   };
   cv.addEventListener("mousedown",down); cv.addEventListener("mousemove",move); window.addEventListener("mouseup",up);
   cv.addEventListener("touchstart",down,{passive:false}); cv.addEventListener("touchmove",move,{passive:false}); cv.addEventListener("touchend",up);
 }
-function mapaDesfazer(){ D.mapa.ops.pop(); save(); mapaDesenhar(); }
+function mapaDesfazer(){ const m=mapaAtual(); m.ops.pop(); save(); mapaDesenhar(); }
 function mapaLimpar(){
-  if(!D.mapa.ops.length) return;
-  if(!confirm("Apagar todas as marcações do mapa?")) return;
-  D.mapa.ops=[]; save(); mapaDesenhar();
+  const m=mapaAtual();
+  if(!m.ops.length) return;
+  if(!confirm("Apagar TODAS as marcações deste mapa?")) return;
+  m.ops=[]; save(); mapaDesenhar();
 }
 function mapaEscolher(inp){
   const f=inp.files&&inp.files[0]; if(!f) return;
@@ -3294,7 +3435,8 @@ function mapaEscolher(inp){
       cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
       const data=cv.toDataURL("image/jpeg",0.85);
       if(data.length>4500000){ alert("Essa imagem ficou grande demais — tente uma versão menor do mapa."); return; }
-      D.mapa={img:data, ops:[]};
+      const m=mapaAtual();
+      m.img=data; m.ops=[];
       save(); renderMapa(); mapaBind();
       setSaveState("mapa carregado ✧",true);
     };
@@ -3304,12 +3446,14 @@ function mapaEscolher(inp){
   inp.value="";
 }
 function mapaRemover(){
-  if(!confirm("Remover o mapa da campanha? As marcações também serão perdidas.")) return;
-  D.mapa={img:"", ops:[]}; save(); renderMapa();
+  if(!confirm("Remover a imagem deste mapa? As marcações também serão perdidas (o mapa continua na lista, vazio).")) return;
+  const m=mapaAtual();
+  m.img=""; m.ops=[]; save(); renderMapa();
   setSaveState("mapa removido",true);
 }
 function mapaComporFlat(cb){
   // compõe imagem + marcações num único PNG/JPEG achatado, comprimindo para caber no Firestore (~1MB por doc)
+  const m=mapaAtual();
   mapaCarregarImagem(()=>{
     if(!mapaImg) return cb(null);
     const tentativas=[[1400,0.8],[1100,0.65],[900,0.5],[700,0.4]];
@@ -3322,7 +3466,7 @@ function mapaComporFlat(cb){
       cv.width=Math.round(mapaImg.naturalWidth*esc); cv.height=Math.round(mapaImg.naturalHeight*esc);
       const ctx=cv.getContext("2d");
       ctx.drawImage(mapaImg,0,0,cv.width,cv.height);
-      (D.mapa.ops||[]).forEach(op=>mapaDesenharOp(ctx,op,cv.width,cv.height));
+      m.ops.forEach(op=>mapaDesenharOp(ctx,op,cv.width,cv.height));
       const data=cv.toDataURL("image/jpeg",Q);
       if(data.length<700000) return cb(data);
       tentar();
@@ -3331,7 +3475,8 @@ function mapaComporFlat(cb){
   });
 }
 function mapaEnviar(){
-  if(!D.mapa.img){ setSaveState("carregue um mapa primeiro"); return; }
+  const m=mapaAtual();
+  if(!m.img){ setSaveState("carregue um mapa primeiro"); return; }
   if(!fbOk||!fbDb||!C.sala){ setSaveState("conecte a sala primeiro (aba Campanhas → Mesa Online)"); return; }
   document.getElementById("mapaStatus").textContent="preparando envio...";
   mapaComporFlat((data,falhou)=>{
@@ -3339,8 +3484,8 @@ function mapaEnviar(){
       document.getElementById("mapaStatus").textContent="não consegui comprimir o mapa o bastante — tente uma imagem menor.";
       return;
     }
-    fbDb.collection("salas").doc(C.sala).collection("mapa").doc("atual").set({img:data, ts:Date.now()})
-      .then(()=>{ document.getElementById("mapaStatus").textContent="✦ mapa enviado aos jogadores!"; })
+    fbDb.collection("salas").doc(C.sala).collection("mapa").doc("atual").set({img:data, ts:Date.now(), nome:m.nome||""})
+      .then(()=>{ document.getElementById("mapaStatus").textContent="✦ \""+(m.nome||"mapa")+"\" enviado aos jogadores!"; })
       .catch(()=>{ document.getElementById("mapaStatus").textContent="falha ao enviar — tente de novo."; });
   });
 }

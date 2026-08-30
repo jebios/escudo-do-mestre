@@ -1,4 +1,4 @@
-const CACHE = "escudo-v3";
+const CACHE = "escudo-v4";
 const PRECACHE = [
   "./index.html",
   "icon-192.png",
