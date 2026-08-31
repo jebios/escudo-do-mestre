@@ -652,7 +652,13 @@ if ("serviceWorker" in navigator) {
       <button class="gbtn ghost" style="padding:10px 0" onclick="mapaRemover()">remover mapa</button>
     </div>
     <input type="file" id="mapaFile" accept="image/*" style="display:none" onchange="mapaEscolher(this)">
-    <button class="gbtn" style="width:100%; padding:12px; margin-top:10px" onclick="mapaEnviar()">✦ enviar aos jogadores</button>
+    <div class="row r2" style="margin-top:10px">
+      <button class="gbtn" style="padding:12px 0" onclick="mapaEnviar()">✦ enviar aos jogadores</button>
+      <button class="gbtn ghost danger" style="padding:12px 0" onclick="mapaRemoverDosJogadores()">retirar dos jogadores</button>
+    </div>
+    <p style="font-size:.7rem; color:var(--ink-soft); text-align:center; margin-top:6px">
+      Cada mapa enviado fica visível aos jogadores até você retirá-lo — pode enviar vários.
+    </p>
     <div id="mapaStatus" style="font-size:.78rem; color:var(--ink-soft); margin-top:8px; text-align:center"></div>
   </div>
 </section>
@@ -3484,10 +3490,22 @@ function mapaEnviar(){
       document.getElementById("mapaStatus").textContent="não consegui comprimir o mapa o bastante — tente uma imagem menor.";
       return;
     }
-    fbDb.collection("salas").doc(C.sala).collection("mapa").doc("atual").set({img:data, ts:Date.now(), nome:m.nome||""})
-      .then(()=>{ document.getElementById("mapaStatus").textContent="✦ \""+(m.nome||"mapa")+"\" enviado aos jogadores!"; })
+    fbDb.collection("salas").doc(C.sala).collection("mapas").doc(m.id).set({img:data, ts:Date.now(), nome:m.nome||""})
+      .then(()=>{
+        m.enviado=true;
+        document.getElementById("mapaStatus").textContent="✦ \""+(m.nome||"mapa")+"\" enviado — soma-se aos outros mapas já visíveis aos jogadores!";
+        mapaRenderSeletor();
+      })
       .catch(()=>{ document.getElementById("mapaStatus").textContent="falha ao enviar — tente de novo."; });
   });
+}
+function mapaRemoverDosJogadores(){
+  const m=mapaAtual();
+  if(!fbOk||!fbDb||!C.sala){ setSaveState("conecte a sala primeiro"); return; }
+  if(!confirm(`Remover "${m.nome||"este mapa"}" da visão dos jogadores? (continua salvo aqui no Escudo)`)) return;
+  fbDb.collection("salas").doc(C.sala).collection("mapas").doc(m.id).delete()
+    .then(()=>{ m.enviado=false; document.getElementById("mapaStatus").textContent="mapa removido da visão dos jogadores"; mapaRenderSeletor(); })
+    .catch(()=>{ document.getElementById("mapaStatus").textContent="falha ao remover — tente de novo."; });
 }
 
 /* ================== chat da mesa (mestre) ================== */
