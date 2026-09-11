@@ -18,6 +18,7 @@ if ("serviceWorker" in navigator) {
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <style>
   :root{
     --leather:#3a4250; --leather-deep:#282e39; --leather-line:#4e5767;
@@ -550,19 +551,6 @@ if ("serviceWorker" in navigator) {
       <select id="lancMoeda" style="width:110px"></select>
       <button class="gbtn" onclick="addLanc(1)" title="entrada">+</button>
       <button class="gbtn" style="background:var(--blood); border-color:var(--blood); color:#f5e6dc" onclick="addLanc(-1)" title="gasto">−</button>
-    </div>
-  </div>
-  <div class="card">
-    <h2>Moedas &amp; Câmbio</h2>
-    <p style="font-size:.8rem; color:var(--ink-soft); margin-bottom:10px; line-height:1.4">
-      Defina quanto vale cada moeda <b>em peças de ouro</b>. Ex.: cobre = 0,01 (100 PC = 1 PO); prata = 0,1 (10 PP = 1 PO); platina = 10.
-    </p>
-    <div id="moedaList"></div>
-    <div class="lancadd">
-      <input type="text" id="nmNome" placeholder="Nome (ex.: Dobrão Anão)" style="flex:1.4">
-      <input type="text" id="nmSigla" placeholder="sigla" style="width:64px">
-      <input type="number" id="nmTaxa" placeholder="em PO" step="any" style="width:80px">
-      <button class="gbtn" onclick="addMoeda()">+</button>
     </div>
   </div>
   <div class="card">
@@ -1215,36 +1203,42 @@ const MOEDAS_PADRAO=[
   {id:"pl", nome:"Platina", sigla:"PL", taxa:10}
 ];
 function ensureEco(){
-  if(!Array.isArray(D.eco.moedas)||!D.eco.moedas.length) D.eco.moedas=JSON.parse(JSON.stringify(MOEDAS_PADRAO));
+  const idsPadrao=new Set(MOEDAS_PADRAO.map(m=>m.id));
+  // migração única: quem já tinha criado moedas customizadas não perde o valor —
+  // convertemos os lançamentos delas para PO equivalente e voltamos às 5 moedas padrão (taxa fixa).
+  if(Array.isArray(D.eco.moedas) && D.eco.moedas.some(m=>!idsPadrao.has(m.id))){
+    const taxaAntiga={}; D.eco.moedas.forEach(m=>taxaAntiga[m.id]=m.taxa);
+    D.eco.lancs=(D.eco.lancs||[]).map(l=>{
+      if(idsPadrao.has(l.moeda)) return l;
+      const taxa=taxaAntiga[l.moeda]??1;
+      return {...l, qtd:Math.round((l.qtd*taxa)*100)/100, moeda:"po", desc:(l.desc||"")+" (convertido para PO)"};
+    });
+  }
+  delete D.eco.moedas;   // as 5 moedas padrão agora são fixas — não ficam mais salvas/editáveis
   D.eco.lancs=(D.eco.lancs||[]).map(l=>{
     if(l.moeda) return l;
-    return {id:l.id, ts:l.ts, desc:l.desc, qtd:l.val, moeda:"po"};   // migra lançamentos antigos (eram em PO)
+    return {id:l.id, ts:l.ts, desc:l.desc, qtd:l.val, moeda:"po"};   // migra lançamentos bem antigos (eram só em PO)
   });
 }
-const moedaDe=id=>D.eco.moedas.find(m=>m.id===id)||D.eco.moedas.find(m=>m.id==="po")||D.eco.moedas[0];
+const moedaDe=id=>MOEDAS_PADRAO.find(m=>m.id===id)||MOEDAS_PADRAO.find(m=>m.id==="po");
 function renderEco(){
   ensureEco();
-  // saldos por moeda
   const saldos={};
   D.eco.lancs.forEach(l=>{ saldos[l.moeda]=(saldos[l.moeda]||0)+l.qtd; });
-  const totalPO=D.eco.moedas.reduce((s,m)=>s+(saldos[m.id]||0)*m.taxa,0);
+  const totalPO=MOEDAS_PADRAO.reduce((s,m)=>s+(saldos[m.id]||0)*m.taxa,0);
   const sv=document.getElementById("saldoV");
   sv.textContent=(Math.round(totalPO*100)/100).toLocaleString("pt-BR");
   sv.className="v"+(totalPO<0?" neg":"");
   const cw=document.getElementById("carteiras"); cw.innerHTML="";
-  D.eco.moedas.forEach(m=>{
+  MOEDAS_PADRAO.forEach(m=>{
     const q=saldos[m.id]||0;
-    if(q===0 && !["pc","pp","po"].includes(m.id)) return;   // esconde carteiras zeradas das moedas extras
     const p=document.createElement("div"); p.className="pill";
     p.innerHTML=`<div class="v" style="font-size:.95rem">${q.toLocaleString("pt-BR")}</div><div class="k">${m.sigla}</div>`;
     cw.appendChild(p);
   });
-  // seletor do lançamento
   const sel=document.getElementById("lancMoeda");
-  const cur=sel.value;
-  sel.innerHTML=D.eco.moedas.map(m=>`<option value="${m.id}">${m.sigla}</option>`).join("");
-  sel.value=D.eco.moedas.some(m=>m.id===cur)?cur:"po";
-  // lançamentos
+  if(!sel.dataset.montado){ sel.dataset.montado="1";
+    sel.innerHTML=MOEDAS_PADRAO.map(m=>`<option value="${m.id}"${m.id==="po"?" selected":""}>${m.sigla}</option>`).join(""); }
   const el=document.getElementById("lancList"); el.innerHTML="";
   if(!D.eco.lancs.length){ el.innerHTML='<div class="empty" style="padding:12px">Nenhum lançamento ainda.</div>'; }
   [...D.eco.lancs].sort((a,b)=>b.ts-a.ts).forEach(l=>{
@@ -1258,32 +1252,9 @@ function renderEco(){
     r.querySelector(".xbtn").onclick=()=>{ D.eco.lancs=D.eco.lancs.filter(x=>x.id!==l.id); renderEco(); save(); };
     el.appendChild(r);
   });
-  // câmbio
-  const ml=document.getElementById("moedaList"); ml.innerHTML="";
-  D.eco.moedas.forEach(m=>{
-    const emUso=D.eco.lancs.some(l=>l.moeda===m.id);
-    const r=document.createElement("div"); r.className="lanc";
-    r.innerHTML=`<span class="d"><b>${m.sigla}</b> — <span class="mn"></span></span>
-      <span style="white-space:nowrap">1 ${m.sigla} = <input type="number" step="any" value="${m.taxa}" style="width:70px; padding:4px; text-align:right"> PO</span>
-      <button class="xbtn" ${emUso||m.id==="po"?"disabled style='opacity:.25;cursor:default'":""}>✕</button>`;
-    r.querySelector(".mn").textContent=m.nome;
-    r.querySelector("input").oninput=e=>{ m.taxa=Number(e.target.value)||0; renderEcoTotais(); save(); };
-    if(!emUso&&m.id!=="po") r.querySelector(".xbtn").onclick=()=>{
-      if(confirm(`Remover a moeda ${m.nome} (${m.sigla})?`)){ D.eco.moedas=D.eco.moedas.filter(x=>x.id!==m.id); renderEco(); save(); }
-    };
-    ml.appendChild(r);
-  });
   const ta=document.getElementById("ecoNotas");
   if(!ta.dataset.bound){ ta.dataset.bound="1"; ta.oninput=e=>{ D.eco.notas=e.target.value; save(); }; }
   ta.value=D.eco.notas||"";
-}
-function renderEcoTotais(){   // atualiza só o total e as carteiras sem redesenhar os inputs de câmbio
-  const saldos={};
-  D.eco.lancs.forEach(l=>{ saldos[l.moeda]=(saldos[l.moeda]||0)+l.qtd; });
-  const totalPO=D.eco.moedas.reduce((s,m)=>s+(saldos[m.id]||0)*m.taxa,0);
-  const sv=document.getElementById("saldoV");
-  sv.textContent=(Math.round(totalPO*100)/100).toLocaleString("pt-BR");
-  sv.className="v"+(totalPO<0?" neg":"");
 }
 function addLanc(sign){
   const desc=document.getElementById("lancDesc").value.trim();
@@ -1291,16 +1262,6 @@ function addLanc(sign){
   if(!v){ document.getElementById("lancVal").focus(); return; }
   D.eco.lancs.push({id:uid("l"), ts:Date.now(), desc, qtd:sign*v, moeda:document.getElementById("lancMoeda").value});
   document.getElementById("lancDesc").value=""; document.getElementById("lancVal").value="";
-  renderEco(); save();
-}
-function addMoeda(){
-  const nome=document.getElementById("nmNome").value.trim();
-  const sigla=document.getElementById("nmSigla").value.trim().toUpperCase();
-  const taxa=Number(document.getElementById("nmTaxa").value);
-  if(!nome||!sigla||!taxa){ alert("Preencha nome, sigla e o valor em PO (ex.: 0,5)."); return; }
-  if(D.eco.moedas.some(m=>m.sigla===sigla)){ alert("Já existe uma moeda com essa sigla."); return; }
-  D.eco.moedas.push({id:uid("mo"), nome, sigla, taxa});
-  document.getElementById("nmNome").value=""; document.getElementById("nmSigla").value=""; document.getElementById("nmTaxa").value="";
   renderEco(); save();
 }
 
@@ -1332,6 +1293,8 @@ function fecharNotasModal(){
     const pos=e=>{ const t=(e.touches&&e.touches[0])||e; return [t.clientX,t.clientY]; };
     const down=e=>{
       if(e.target.closest("button")) return;
+      e.preventDefault();
+      document.body.style.userSelect="none";
       const [sx0,sy0]=pos(e);
       const sx=sx0-win.offsetLeft, sy=sy0-win.offsetTop;
       win.style.zIndex=++popZ;
@@ -1345,6 +1308,7 @@ function fecharNotasModal(){
       const up=()=>{
         document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up);
         document.removeEventListener("touchmove",move); document.removeEventListener("touchend",up);
+        document.body.style.userSelect="";
         D.ui=D.ui||{}; D.ui.notasWin={x:win.offsetLeft, y:win.offsetTop}; save();
       };
       document.addEventListener("mousemove",move); document.addEventListener("mouseup",up);
@@ -2583,7 +2547,9 @@ function dadoFechar(){
     const arrastavel=(handle, aoSoltarMover, aoTocar)=>{
       let moveu=false;
       const down=e=>{
+        e.preventDefault();
         moveu=false;
+        document.body.style.userSelect="none";
         const [sx0,sy0]=pos(e);
         const sx=sx0-handle.parentElement.offsetLeft, sy=sy0-handle.parentElement.offsetTop;
         const move=m=>{
@@ -2595,13 +2561,14 @@ function dadoFechar(){
         const up=()=>{
           document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up);
           document.removeEventListener("touchmove",move); document.removeEventListener("touchend",up);
+          document.body.style.userSelect="";
           if(!moveu && aoTocar) aoTocar();
         };
         document.addEventListener("mousemove",move); document.addEventListener("mouseup",up);
         document.addEventListener("touchmove",move,{passive:false}); document.addEventListener("touchend",up);
       };
       handle.addEventListener("mousedown",down);
-      handle.addEventListener("touchstart",down,{passive:true});
+      handle.addEventListener("touchstart",down,{passive:false});
     };
     arrastavel(btn, (x,y)=>{
       btn.style.left=x+"px"; btn.style.top=y+"px"; btn.style.right="auto"; btn.style.bottom="auto";
@@ -2695,6 +2662,10 @@ async function pdfDel(key){
   }catch(e){}
 }
 async function pdfIndice(){ return (await pdfGet("_index"))||[]; }
+function pdfStorageRef(id){
+  if(!contaUid || typeof firebase==="undefined" || !firebase.storage) return null;
+  try{ return firebase.storage().ref(`pdfsEscudo/${contaUid}/${id}.pdf`); }catch(e){ return null; }
+}
 async function pdfArquivoEscolhido(inp){
   const f=inp.files&&inp.files[0]; if(!f) return;
   if(f.type!=="application/pdf" && !f.name.toLowerCase().endsWith(".pdf")){
@@ -2707,24 +2678,69 @@ async function pdfArquivoEscolhido(inp){
   await pdfSet("_index",idx);
   inp.value="";
   pdfRenderLista();
+  const ref=pdfStorageRef(id);
+  if(ref){
+    try{
+      await ref.put(f, {contentType:"application/pdf", customMetadata:{nome:f.name}});
+      pdfRenderLista();
+    }catch(e){ console.warn("falha ao sincronizar PDF na nuvem:",e.message); }
+  }
 }
 async function pdfAbrir(id){
-  const f=await pdfGet(id); if(!f){ alert("Não encontrei esse arquivo."); return; }
+  let f=await pdfGet(id);
+  if(!f){
+    const ref=pdfStorageRef(id);
+    if(!ref){ alert("Não encontrei esse arquivo neste aparelho."); return; }
+    try{
+      const url=await ref.getDownloadURL();
+      window.open(url,"_blank");
+      return;
+    }catch(e){ alert("Não encontrei esse arquivo neste aparelho nem na nuvem."); return; }
+  }
   const url=URL.createObjectURL(f);
   window.open(url,"_blank");
 }
 async function pdfRemover(id){
-  if(!confirm("Remover este PDF do aparelho?")) return;
+  if(!confirm("Remover este PDF (deste aparelho e, se estiver sincronizado, da nuvem também)?")) return;
   await pdfDel(id);
   const idx=(await pdfIndice()).filter(x=>x.id!==id);
   await pdfSet("_index",idx);
+  const ref=pdfStorageRef(id);
+  if(ref) ref.delete().catch(()=>{});
   pdfRenderLista();
+}
+async function pdfSincronizarDaNuvem(){
+  if(!contaUid || typeof firebase==="undefined" || !firebase.storage) return;
+  try{
+    const lista=await firebase.storage().ref(`pdfsEscudo/${contaUid}`).listAll();
+    const idx=await pdfIndice();
+    const idsLocais=new Set(idx.map(x=>x.id));
+    let mudou=false;
+    for(const item of lista.items){
+      const id=item.name.replace(/\.pdf$/,"");
+      if(idsLocais.has(id)) continue;
+      const meta=await item.getMetadata().catch(()=>null);
+      const nome=(meta&&meta.customMetadata&&meta.customMetadata.nome)||item.name;
+      const url=await item.getDownloadURL();
+      const blob=await (await fetch(url)).blob();
+      const file=new File([blob], nome, {type:"application/pdf"});
+      await pdfSet(id, file);
+      idx.push({id, nome, ts:(meta&&Date.parse(meta.timeCreated))||Date.now()});
+      mudou=true;
+    }
+    if(mudou){ await pdfSet("_index", idx); pdfRenderLista(); setSaveState("📄 PDFs da conta sincronizados",true); }
+  }catch(e){ console.warn("sincronização de PDFs falhou:",e.message); }
 }
 async function pdfRenderLista(){
   const el=document.getElementById("libLista"); if(!el) return;
   const idx=await pdfIndice();
   el.innerHTML="";
-  if(!idx.length){ el.innerHTML='<div class="empty" style="padding:14px 4px">Nenhum PDF adicionado ainda. Toque em "+ adicionar PDF" para escolher um arquivo do seu aparelho.</div>'; return; }
+  if(!idx.length){
+    el.innerHTML = contaUid
+      ? '<div class="empty" style="padding:14px 4px">Nenhum PDF ainda. Toque em "+ adicionar PDF" — com sua conta logada, ele aparece nos seus outros aparelhos também.</div>'
+      : '<div class="empty" style="padding:14px 4px">Nenhum PDF adicionado ainda. Toque em "+ adicionar PDF" para escolher um arquivo do seu aparelho.<br><br>Dica: entre numa conta (aba Campanhas) para os PDFs sincronizarem entre seus aparelhos.</div>';
+    return;
+  }
   idx.slice().sort((a,b)=>b.ts-a.ts).forEach(it=>{
     const d=document.createElement("div"); d.className="pdfitem";
     d.innerHTML=`<span class="pdfic">📄</span><span class="pdfnome"></span>
@@ -2786,7 +2802,9 @@ function libFechar(){
     const arrastavel=(handle, aoSoltarMover, aoTocar)=>{
       let moveu=false;
       const down=e=>{
+        e.preventDefault();
         moveu=false;
+        document.body.style.userSelect="none";
         const [sx0,sy0]=pos(e);
         const sx=sx0-handle.parentElement.offsetLeft, sy=sy0-handle.parentElement.offsetTop;
         const move=m=>{
@@ -2798,13 +2816,14 @@ function libFechar(){
         const up=()=>{
           document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up);
           document.removeEventListener("touchmove",move); document.removeEventListener("touchend",up);
+          document.body.style.userSelect="";
           if(!moveu && aoTocar) aoTocar();
         };
         document.addEventListener("mousemove",move); document.addEventListener("mouseup",up);
         document.addEventListener("touchmove",move,{passive:false}); document.addEventListener("touchend",up);
       };
       handle.addEventListener("mousedown",down);
-      handle.addEventListener("touchstart",down,{passive:true});
+      handle.addEventListener("touchstart",down,{passive:false});
     };
     arrastavel(btn, (x,y)=>{
       btn.style.left=x+"px"; btn.style.top=y+"px"; btn.style.right="auto"; btn.style.bottom="auto";
@@ -2957,6 +2976,8 @@ if(document.readyState!=="loading") audioCarregarSalvas();
     const pos=e=>{ const t=(e.touches&&e.touches[0])||e; return [t.clientX,t.clientY]; };
     let moveu=false;
     const down=e=>{
+      e.preventDefault();
+      document.body.style.userSelect="none";
       moveu=false;
       const [sx0,sy0]=pos(e);
       const sx=sx0-bar.offsetLeft, sy=sy0-bar.offsetTop;
@@ -2972,6 +2993,7 @@ if(document.readyState!=="loading") audioCarregarSalvas();
       const up=()=>{
         document.removeEventListener("mousemove",move); document.removeEventListener("mouseup",up);
         document.removeEventListener("touchmove",move); document.removeEventListener("touchend",up);
+        document.body.style.userSelect="";
         if(moveu){
           D.ui=D.ui||{}; D.ui.audioWin={x:bar.offsetLeft, y:bar.offsetTop}; save();
         }else{
@@ -3131,6 +3153,7 @@ async function contaAoLogar(user){
       contaAplicarNuvem(JSON.parse(v.dados));
     });
     contaStatus("✦ sincronizado entre seus aparelhos",true);
+    pdfSincronizarDaNuvem();
   }catch(e){ contaStatus("falha ao sincronizar: "+(e.message||"")); }
 }
 (function contaAuthWatch(){
@@ -3190,7 +3213,7 @@ async function fbConectar(manual){
   try{
     if(!fbApp){ fbApp=firebase.initializeApp(cfg); }
     fbDb=firebase.firestore();
-    await firebase.auth().signInAnonymously();
+    if(!firebase.auth().currentUser) await firebase.auth().signInAnonymously();   // não derruba login de conta já ativo
     const sala=C.sala, campId=C.id;
     fbUnsub=fbDb.collection("salas").doc(sala).collection("herois")
       .onSnapshot(snap=>{

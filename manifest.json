@@ -1,6 +1,5 @@
 {
-  "name": "Escudo do Mestre",
-  "short_name": "Escudo",
+  "name": "Escudo do Mestre", "short_name": "Escudo",
   "description": "Campanhas, NPCs, combate, economia e jogadores — a mesa do mestre",
   "lang": "pt-BR", "start_url": "./index.html", "scope": "./",
   "display": "standalone", "orientation": "any",
