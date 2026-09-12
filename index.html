@@ -1711,12 +1711,16 @@ function normChar(c){
     abs:{for:10,des:10,con:10,int:10,sab:10,car:10},
     profs:{},skillExtra:{},atks:[],pets:[],spells:[],slots:{},
     moedas:{pc:0,pp:0,pe:0,po:0,pl:0},
-    carac:"",tracos:"",talentos:"",trein:"",idiomas:"",magias:"",cdmag:"",atqmag:"",equip:""};
+    carac:"",tracos:"",talentos:"",trein:"",idiomas:"",magias:"",cdmag:"",atqmag:"",equip:"",
+    inventario:[], itensMagicos:{}, itensMagicosNotas:"", armasMagicas:[], retrato:""};
   const o={...b,...(c||{})};
   o.abs={...b.abs,...(c&&c.abs||{})}; o.moedas={...b.moedas,...(c&&c.moedas||{})};
   o.profs=c&&c.profs||{}; o.skillExtra=c&&c.skillExtra||{};
   o.atks=Array.isArray(o.atks)?o.atks:[]; o.pets=Array.isArray(o.pets)?o.pets:[];
   o.spells=Array.isArray(o.spells)?o.spells:[]; o.slots=o.slots||{};
+  o.inventario=Array.isArray(o.inventario)?o.inventario:[];
+  o.armasMagicas=Array.isArray(o.armasMagicas)?o.armasMagicas:[];
+  o.itensMagicos=o.itensMagicos||{};
   return o;
 }
 function playerSheetEditor(p, onTitle){
@@ -1976,10 +1980,89 @@ function playerSheetEditor(p, onTitle){
   // ---- textos ----
   root.appendChild(secao("Textos da ficha"));
   [["Características","carac"],["Traços de Espécie","tracos"],["Talentos","talentos"],
-   ["Treinamento & Proficiências","trein"],["Idiomas","idiomas"],["Anotações de magia","magias"],
-   ["Equipamento & Tesouro","equip"]].forEach(([rot,k])=>{
+   ["Treinamento & Proficiências","trein"],["Idiomas","idiomas"],["Anotações de magia","magias"]].forEach(([rot,k])=>{
     root.appendChild(fld(rot,c[k],v=>c[k]=v,"area"));
   });
+
+  // ---- retrato do herói (definido pelo jogador; o mestre só visualiza) ----
+  if(c.retrato){
+    root.appendChild(secao("Retrato"));
+    const rw=document.createElement("div"); rw.style.cssText="text-align:center";
+    rw.innerHTML=`<img src="${c.retrato}" style="max-width:110px; border-radius:8px; border:1px solid var(--parch-line)">`;
+    root.appendChild(rw);
+  }
+
+  // ---- inventário ----
+  root.appendChild(secao("Inventário"));
+  const invW=document.createElement("div"); root.appendChild(invW);
+  function rInv(){
+    invW.innerHTML="";
+    c.inventario.forEach((it,i)=>{
+      const r=document.createElement("div"); r.className="atk";
+      r.style.gridTemplateColumns="46px 1.6fr .8fr 30px";
+      r.innerHTML=`<input type="number" min="1" title="quantidade"><input type="text" placeholder="nome do item"><input type="number" step="any" min="0" placeholder="PO" title="preço unitário"><button class="xbtn">✕</button>`;
+      const ins=r.querySelectorAll("input");
+      ins[0].value=it.qtd??1; ins[1].value=it.nome||""; ins[2].value=it.preco||"";
+      ins[0].oninput=e=>{ it.qtd=Math.max(1,Number(e.target.value)||1); toque(); };
+      ins[1].oninput=e=>{ it.nome=e.target.value; toque(); };
+      ins[2].oninput=e=>{ it.preco=Number(e.target.value)||0; toque(); };
+      r.querySelector(".xbtn").onclick=()=>{ c.inventario.splice(i,1); rInv(); toque(); };
+      invW.appendChild(r);
+      const dsc=document.createElement("textarea");
+      dsc.placeholder="descrição, propriedades..."; dsc.style.cssText="margin:-6px 0 8px; font-size:.85rem; min-height:40px";
+      dsc.value=it.desc||""; dsc.oninput=e=>{ it.desc=e.target.value; toque(); };
+      invW.appendChild(dsc);
+    });
+    const add=document.createElement("button"); add.className="add"; add.textContent="+ item";
+    add.onclick=()=>{ c.inventario.push({id:"iv"+Date.now(),nome:"",qtd:1,preco:0,desc:""}); rInv(); toque(); };
+    invW.appendChild(add);
+  }
+  rInv();
+
+  // ---- itens mágicos por slot ----
+  root.appendChild(secao("Itens Mágicos"));
+  const SLOTS_MAGICOS_GM=[["cabeca","Cabeça"],["rosto","Rosto"],["garganta","Garganta/Pescoço"],["ombros","Ombros"],
+    ["corpo","Corpo"],["bracos","Braços"],["maos","Mãos"],["cintura","Cintura"],["pes","Pés"],["anel1","Anel 1"],["anel2","Anel 2"]];
+  const slotsMagW=document.createElement("div"); root.appendChild(slotsMagW);
+  function rSlotsMagicos(){
+    slotsMagW.innerHTML="";
+    SLOTS_MAGICOS_GM.forEach(([key,label])=>{
+      const it=c.itensMagicos[key]||(c.itensMagicos[key]={nome:"",sint:false});
+      const r=document.createElement("div");
+      r.style.cssText="display:flex; align-items:center; gap:7px; padding:4px 0; border-bottom:1px dotted var(--parch-line)";
+      r.innerHTML=`<input type="checkbox" title="sintonizado" style="width:17px;height:17px;flex-shrink:0">
+        <span style="font-size:.76rem; color:var(--ink-soft); font-weight:600; width:82px; flex-shrink:0">${label}</span>
+        <input type="text" placeholder="nome do item" style="flex:1; padding:5px 7px; font-size:.85rem">`;
+      const chk=r.querySelector('input[type="checkbox"]'), inp=r.querySelector('input[type="text"]');
+      chk.checked=!!it.sint; inp.value=it.nome||"";
+      chk.onchange=()=>{ it.sint=chk.checked; toque(); };
+      inp.oninput=()=>{ it.nome=inp.value; toque(); };
+      slotsMagW.appendChild(r);
+    });
+  }
+  rSlotsMagicos();
+  const armasW=document.createElement("div"); armasW.style.marginTop="8px"; root.appendChild(armasW);
+  function rArmasMagicas(){
+    armasW.innerHTML='<label style="margin-bottom:4px">Armas, Escudos e Outros Itens Mágicos</label>';
+    c.armasMagicas.forEach((it,i)=>{
+      const r=document.createElement("div");
+      r.style.cssText="display:flex; align-items:center; gap:7px; padding:4px 0; border-bottom:1px dotted var(--parch-line)";
+      r.innerHTML=`<input type="checkbox" title="sintonizado" style="width:17px;height:17px;flex-shrink:0">
+        <input type="text" placeholder="Espada Longa +1..." style="flex:1; padding:5px 7px; font-size:.85rem">
+        <button class="xbtn" style="font-size:.9rem">✕</button>`;
+      const chk=r.querySelector('input[type="checkbox"]'), inp=r.querySelector('input[type="text"]');
+      chk.checked=!!it.sint; inp.value=it.nome||"";
+      chk.onchange=()=>{ it.sint=chk.checked; toque(); };
+      inp.oninput=()=>{ it.nome=inp.value; toque(); };
+      r.querySelector(".xbtn").onclick=()=>{ c.armasMagicas.splice(i,1); rArmasMagicas(); toque(); };
+      armasW.appendChild(r);
+    });
+    const add=document.createElement("button"); add.className="add"; add.textContent="+ arma / item mágico";
+    add.onclick=()=>{ c.armasMagicas.push({nome:"",sint:false}); rArmasMagicas(); toque(); };
+    armasW.appendChild(add);
+  }
+  rArmasMagicas();
+  root.appendChild(fld("Propriedades e efeitos (itens mágicos)",c.itensMagicosNotas,v=>c.itensMagicosNotas=v,"area"));
 
   // ---- moedas ----
   root.appendChild(secao("Bolsa de Moedas"));
