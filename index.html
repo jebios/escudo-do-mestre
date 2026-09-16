@@ -1101,6 +1101,17 @@ function dupMon(m){
   const i=D.mons.findIndex(x=>x.id===m.id);
   D.mons.splice(i+1,0,c); renderMons(); save();
 }
+function monsAtualizarBadge(id){
+  // atualiza só o "X/Y PV" da lista de fundo, sem reconstruir a lista inteira (evita fechar pop-ups e pular a rolagem)
+  const m=D.mons.find(x=>x.id===id); if(!m) return;
+  document.querySelectorAll(`#monList .card`).forEach(card=>{
+    if(card.querySelector("h3")?.textContent===(m.nome||"(criatura sem nome)")){
+      const b=card.querySelector(".badge"); if(b) b.textContent=`${m.pv}/${m.pvmax} PV`;
+    }
+  });
+  const hpv=document.querySelector(`.det .hpv`); // painel inline aberto, se houver
+  if(hpv && openMon===id) hpv.innerHTML=`${m.pv} / <span style="font-size:.85rem;color:var(--ink-soft)">${m.pvmax}</span>`;
+}
 function renderMons(){
   const el=document.getElementById("monList"); el.innerHTML="";
   if(!D.mons.length){ el.innerHTML='<div class="empty">Nenhuma ficha de combate. Crie os monstros e vilões do próximo encontro.</div>'; return; }
@@ -1157,12 +1168,27 @@ function renderMons(){
       g(".f-nome").oninput=e=>{m.nome=e.target.value; d.querySelector("h3").textContent=m.nome||"(criatura sem nome)"; save();};
       g(".f-tipo").oninput=e=>{m.tipo=e.target.value; save();};
       g(".f-ca").oninput=e=>{m.ca=Number(e.target.value)||0; save();};
-      g(".f-pvmax").oninput=e=>{m.pvmax=Math.max(1,Number(e.target.value)||1); m.pv=Math.min(m.pv,m.pvmax); renderMons(); save();};
+      g(".f-pvmax").oninput=e=>{
+        m.pvmax=Math.max(1,Number(e.target.value)||1); m.pv=Math.min(m.pv,m.pvmax);
+        d.querySelector(".badge").textContent=m.pv+"/"+m.pvmax+" PV";
+        det.querySelector(".hpv").innerHTML=`${m.pv} / <span style="font-size:.85rem;color:var(--ink-soft)">${m.pvmax}</span>`;
+        save();
+      };
       g(".f-desl").oninput=e=>{m.desloc=e.target.value; save();};
       g(".f-cd").oninput=e=>{m.cd=e.target.value; save();};
       g(".f-tracos").oninput=e=>{m.tracos=e.target.value; save();};
-      det.querySelector(".btn-dmg").onclick=()=>{ const a=Math.max(1,Number(g(".f-amt").value)||1); m.pv=Math.max(0,m.pv-a); renderMons(); save(); };
-      det.querySelector(".btn-heal").onclick=()=>{ const a=Math.max(1,Number(g(".f-amt").value)||1); m.pv=Math.min(m.pvmax,m.pv+a); renderMons(); save(); };
+      det.querySelector(".btn-dmg").onclick=()=>{
+        const a=Math.max(1,Number(g(".f-amt").value)||1); m.pv=Math.max(0,m.pv-a);
+        d.querySelector(".badge").textContent=m.pv+"/"+m.pvmax+" PV";
+        det.querySelector(".hpv").innerHTML=`${m.pv} / <span style="font-size:.85rem;color:var(--ink-soft)">${m.pvmax}</span>`;
+        save();
+      };
+      det.querySelector(".btn-heal").onclick=()=>{
+        const a=Math.max(1,Number(g(".f-amt").value)||1); m.pv=Math.min(m.pvmax,m.pv+a);
+        d.querySelector(".badge").textContent=m.pv+"/"+m.pvmax+" PV";
+        det.querySelector(".hpv").innerHTML=`${m.pv} / <span style="font-size:.85rem;color:var(--ink-soft)">${m.pvmax}</span>`;
+        save();
+      };
       g(".f-dup").onclick=()=>dupMon(m);
       // atributos
       const ar=det.querySelector(".absrow");
@@ -2224,12 +2250,23 @@ async function exportData(){
     }
   }catch(e){}
   const payload={app:"escudo-mestre", versao:2, exportadoEm:new Date().toISOString(), dados:R, pdfs, musicas};
-  const blob=new Blob([JSON.stringify(payload)],{type:"application/json"});
+  const json=JSON.stringify(payload);
+  const fname=`backup-escudo-${new Date().toISOString().slice(0,10)}.json`;
+  const file=new File([json], fname, {type:"application/json"});
+  const mb=(file.size/1024/1024).toFixed(1);
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({files:[file], title:"Backup do Escudo do Mestre",
+        text:`Backup do Escudo (${mb} MB, com ${pdfs.length} PDF(s) e ${musicas.length} música(s)) — guarde este arquivo com cuidado.`});
+      setSaveState(`backup compartilhado (${mb} MB) ✧`,true);
+      return;
+    }catch(e){ if(e && e.name==="AbortError") return; }
+  }
+  const blob=new Blob([json],{type:"application/json"});
   const a=document.createElement("a");
   a.href=URL.createObjectURL(blob);
-  a.download=`backup-escudo-${new Date().toISOString().slice(0,10)}.json`;
+  a.download=fname;
   a.click(); URL.revokeObjectURL(a.href);
-  const mb=(blob.size/1024/1024).toFixed(1);
   setSaveState(`backup baixado (${mb} MB, com ${pdfs.length} PDF(s) e ${musicas.length} música(s)) ✧`,true);
 }
 function importData(inp){
@@ -2407,10 +2444,11 @@ function popBody(k,e,pop,onTitle){
         <input type="number" class="pm-amt" value="1" min="1">
         <button class="btn-heal">+</button>
       </div>`;
+    const pvPill=pills.querySelector(".pills .pill:last-child .v");
     pills.querySelector(".btn-dmg").onclick=()=>{ const a=Math.max(1,Number(pills.querySelector(".pm-amt").value)||1);
-      e.pv=Math.max(0,e.pv-a); save(); renderMons(); renderPopups(); };
+      e.pv=Math.max(0,e.pv-a); save(); pvPill.textContent=`${e.pv}/${e.pvmax}`; monsAtualizarBadge(e.id); };
     pills.querySelector(".btn-heal").onclick=()=>{ const a=Math.max(1,Number(pills.querySelector(".pm-amt").value)||1);
-      e.pv=Math.min(e.pvmax,e.pv+a); save(); renderMons(); renderPopups(); };
+      e.pv=Math.min(e.pvmax,e.pv+a); save(); pvPill.textContent=`${e.pv}/${e.pvmax}`; monsAtualizarBadge(e.id); };
     b.appendChild(pills);
     if(!exp){
       b.appendChild(absRow(e.abs||{},false));
@@ -2422,19 +2460,19 @@ function popBody(k,e,pop,onTitle){
       b.appendChild(texto(e.tracos||""));
       return b;
     }
-    b.appendChild(campo("Nome",e.nome,v=>{e.nome=v; onTitle(v||"criatura"); save(); renderMons();}));
-    b.appendChild(campo("Tipo",e.tipo,v=>{e.tipo=v; save(); renderMons();}));
+    b.appendChild(campo("Nome",e.nome,v=>{e.nome=v; onTitle(v||"criatura"); save();}));
+    b.appendChild(campo("Tipo",e.tipo,v=>{e.tipo=v; save();}));
     const grid=document.createElement("div"); grid.className="row r3";
     [["CA","ca","number"],["PV máx","pvmax","number"],["Desloc.","desloc","text"]].forEach(([rot,kk,tp])=>{
       const c=campo(rot,e[kk],v=>{
-        if(tp==="number"){ e[kk]=Number(v)||0; if(kk==="pvmax"){ e.pvmax=Math.max(1,e.pvmax); e.pv=Math.min(e.pv,e.pvmax); } }
+        if(tp==="number"){ e[kk]=Number(v)||0; if(kk==="pvmax"){ e.pvmax=Math.max(1,e.pvmax); e.pv=Math.min(e.pv,e.pvmax); pvPill.textContent=`${e.pv}/${e.pvmax}`; monsAtualizarBadge(e.id); } }
         else e[kk]=v;
-        save(); renderMons();
+        save();
       },tp);
       grid.appendChild(c);
     });
     b.appendChild(grid);
-    b.appendChild(campo("CD",e.cd,v=>{e.cd=v; save(); renderMons();}));
+    b.appendChild(campo("CD",e.cd,v=>{e.cd=v; save();}));
     b.appendChild(absRow(e.abs=e.abs||{},true));
     const lb=document.createElement("label"); lb.textContent="Ataques"; lb.style.marginTop="8px"; b.appendChild(lb);
     const aw=document.createElement("div");
@@ -2445,10 +2483,10 @@ function popBody(k,e,pop,onTitle){
         r.innerHTML=`<input type="text" placeholder="Cimitarra"><input type="text" placeholder="+4"><input type="text" placeholder="1d6+2"><button class="xbtn">✕</button>`;
         const ins=r.querySelectorAll("input");
         ins[0].value=a.n||""; ins[1].value=a.b||""; ins[2].value=a.d||"";
-        ins[0].oninput=ev=>{a.n=ev.target.value;save();renderMons();};
-        ins[1].oninput=ev=>{a.b=ev.target.value;save();renderMons();};
-        ins[2].oninput=ev=>{a.d=ev.target.value;save();renderMons();};
-        r.querySelector(".xbtn").onclick=()=>{e.atks.splice(i,1);save();renderMons();rAtks();};
+        ins[0].oninput=ev=>{a.n=ev.target.value;save();};
+        ins[1].oninput=ev=>{a.b=ev.target.value;save();};
+        ins[2].oninput=ev=>{a.d=ev.target.value;save();};
+        r.querySelector(".xbtn").onclick=()=>{e.atks.splice(i,1);save();rAtks();};
         aw.appendChild(r);
       });
     };
@@ -2456,7 +2494,7 @@ function popBody(k,e,pop,onTitle){
     const addA=document.createElement("button"); addA.className="add"; addA.textContent="+ ataque";
     addA.onclick=()=>{ e.atks.push({n:"",b:"",d:""}); rAtks(); };
     b.appendChild(addA);
-    b.appendChild(campo("Traços & táticas",e.tracos,v=>{e.tracos=v; save(); renderMons();},"area"));
+    b.appendChild(campo("Traços & táticas",e.tracos,v=>{e.tracos=v; save();},"area"));
     return b;
   }
 
@@ -2470,7 +2508,7 @@ function popBody(k,e,pop,onTitle){
       b.appendChild(texto(e.notas||"(sem notas)"));
       return b;
     }
-    b.appendChild(campo("Nome",e.nome,v=>{e.nome=v; onTitle(v||"NPC"); save(); renderNpcs();}));
+    b.appendChild(campo("Nome",e.nome,v=>{e.nome=v; onTitle(v||"NPC"); save();}));
     const selA=document.createElement("div"); selA.style.marginBottom="8px";
     selA.innerHTML=`<label>Atitude</label><select>
       <option value="aliado"${e.atitude==="aliado"?" selected":""}>Aliado</option>
@@ -2478,9 +2516,9 @@ function popBody(k,e,pop,onTitle){
       <option value="hostil"${e.atitude==="hostil"?" selected":""}>Hostil</option></select>`;
     selA.querySelector("select").onchange=ev=>{e.atitude=ev.target.value; save(); renderNpcs(); renderPopups();};
     b.appendChild(selA);
-    b.appendChild(campo("Local",e.local,v=>{e.local=v; save(); renderNpcs();}));
-    b.appendChild(campo("Papel",e.papel,v=>{e.papel=v; save(); renderNpcs();}));
-    b.appendChild(campo("Notas & segredos",e.notas,v=>{e.notas=v; save(); renderNpcs();},"area"));
+    b.appendChild(campo("Local",e.local,v=>{e.local=v; save();}));
+    b.appendChild(campo("Papel",e.papel,v=>{e.papel=v; save();}));
+    b.appendChild(campo("Notas & segredos",e.notas,v=>{e.notas=v; save();},"area"));
     return b;
   }
 
@@ -3157,6 +3195,7 @@ async function contaEsqueciSenha(){
   if(!email){ contaStatus("digite seu e-mail acima primeiro"); return; }
   try{
     await contaFbPronto();
+    await fbEsperarAuthInicial();
     if(!firebase.auth().currentUser) await firebase.auth().signInAnonymously();
     const doc=await fbDb.collection("recEscudo").doc(email.toLowerCase()).get();
     if(!doc.exists){
@@ -3242,10 +3281,13 @@ async function contaAoLogar(user){
 (function contaAuthWatch(){
   const tentar=()=>{
     if(typeof firebase==="undefined"){ setTimeout(tentar,800); return; }
-    contaFbPronto().then(()=>{
+    contaFbPronto().then(async ()=>{
+      const primeiro=await fbEsperarAuthInicial();
+      if(primeiro && primeiro.email){ contaAoLogar(primeiro); }
+      else{ contaUid=null; contaEmailAtual=null; contaAtualizarUI(); }
       firebase.auth().onAuthStateChanged(user=>{
         if(user && user.email){ contaAoLogar(user); }
-        else{ contaUid=null; contaEmailAtual=null; contaAtualizarUI(); }
+        else if(!user){ contaUid=null; contaEmailAtual=null; contaAtualizarUI(); }
       });
     }).catch(()=>{});
   };
@@ -3269,6 +3311,15 @@ function fbParseCfg(txt){
   try{ const o=JSON.parse(s); return (o&&o.apiKey&&o.projectId)?o:null; }catch(e){ return null; }
 }
 let fbApp=null, fbDb=null, fbUnsub=null, fbOk=false;
+let fbAuthPronto=null;
+function fbEsperarAuthInicial(){
+  if(!fbAuthPronto){
+    fbAuthPronto=new Promise(res=>{
+      const unsub=firebase.auth().onAuthStateChanged(user=>{ unsub(); res(user); });
+    });
+  }
+  return fbAuthPronto;
+}
 function fbStatus(t,ok){ const e=document.getElementById("fbStatus");
   e.textContent=t; e.style.color=ok?"var(--gold)":"var(--ink-soft)"; }
 function fbBindUi(){
@@ -3296,6 +3347,7 @@ async function fbConectar(manual){
   try{
     if(!fbApp){ fbApp=firebase.initializeApp(cfg); }
     fbDb=firebase.firestore();
+    await fbEsperarAuthInicial();
     if(!firebase.auth().currentUser) await firebase.auth().signInAnonymously();   // não derruba login de conta já ativo
     const sala=C.sala, campId=C.id;
     fbUnsub=fbDb.collection("salas").doc(sala).collection("herois")
@@ -3771,10 +3823,14 @@ function campHeader(){
   document.getElementById("campName").textContent="🏰 "+((C&&C.nome)||"campanha sem nome");
   senhaStatus();
   const i=document.getElementById("campNome");
-  i.value=(C&&C.nome)||"";
+  if(document.activeElement!==i) i.value=(C&&C.nome)||"";
   if(!i.dataset.bound){
     i.dataset.bound="1";
-    i.oninput=e=>{ C.nome=e.target.value; campHeader(); renderCampList(); save(); };
+    i.oninput=e=>{
+      C.nome=e.target.value;
+      document.getElementById("campName").textContent="🏰 "+(e.target.value||"campanha sem nome");
+      senhaStatus(); save();
+    };
   }
 }
 function renderCampList(){
