@@ -735,6 +735,15 @@ if ("serviceWorker" in navigator) {
   <button class="gbtn" style="width:100%; padding:12px" onclick="newCamp()">＋ Criar nova campanha</button>
 
   <div class="card" style="margin-top:14px">
+    <h2>Atualizar o App</h2>
+    <p style="font-size:.8rem; color:var(--ink-soft); text-align:center; margin-bottom:10px">
+      Busca a versão mais recente publicada. Suas campanhas e configurações <b>não são afetadas</b>.
+    </p>
+    <button class="gbtn" style="width:100%; padding:11px 0" onclick="forcarAtualizacao()">⟳ verificar atualização</button>
+    <div id="updStatus" style="font-size:.78rem; color:var(--ink-soft); margin-top:8px; text-align:center"></div>
+  </div>
+
+  <div class="card" style="margin-top:14px">
     <h2>Backup da Galeria</h2>
     <p style="font-size:.8rem; color:var(--ink-soft); text-align:center; margin-bottom:10px">
       O backup guarda <b>todas as campanhas</b> num arquivo só — NPCs, combate, economia, história, itens e jogadores.
@@ -2231,6 +2240,28 @@ function blobParaBase64(blob){
     rd.onerror=rej;
     rd.readAsDataURL(blob);
   });
+}
+async function forcarAtualizacao(){
+  const st=document.getElementById("updStatus");
+  const msg=t=>{ if(st) st.textContent=t; };
+  msg("procurando versão nova...");
+  try{
+    save();
+    await new Promise(r=>setTimeout(r,400));   // dá tempo da gravação terminar antes de recarregar
+    if(window.caches){
+      const nomes=await caches.keys();
+      await Promise.all(nomes.map(n=>caches.delete(n)));
+    }
+    if(navigator.serviceWorker){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.update().catch(()=>{})));
+      await Promise.all(regs.map(r=>r.unregister().catch(()=>{})));
+    }
+    msg("✦ atualizando — a página vai recarregar...");
+    setTimeout(()=>location.reload(true),700);
+  }catch(e){
+    msg("não consegui atualizar sozinho — feche e abra o app novamente.");
+  }
 }
 async function exportData(){
   setSaveState("preparando backup (incluindo PDFs e músicas)...");
