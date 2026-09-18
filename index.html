@@ -2682,6 +2682,29 @@ function dadoAbrir(){
 function dadoFechar(){
   document.getElementById("dadoPanel").style.display="none";
 }
+function uiPosDentroDaTela(btn,pos){
+  // a posição é salva por aparelho mas pode vir de uma tela maior —
+  // sem isso, uma posição do PC deixaria o botão fora da tela no celular.
+  const larg=btn.offsetWidth||50, alt=btn.offsetHeight||50;
+  const x=Math.max(4,Math.min(window.innerWidth-larg-4, Number(pos.x)||0));
+  const y=Math.max(4,Math.min(window.innerHeight-alt-4, Number(pos.y)||0));
+  return {x,y};
+}
+
+(function uiBotoesSempreVisiveis(){
+  // se a tela mudar de tamanho (girar o celular, redimensionar a janela),
+  // traz os botões flutuantes de volta para dentro da área visível
+  const ajustar=()=>{
+    ["libBtn","dadoBtn","audioBar"].forEach(id=>{
+      const b=document.getElementById(id);
+      if(!b || b.style.left==="") return;
+      const p=uiPosDentroDaTela(b,{x:b.offsetLeft,y:b.offsetTop});
+      b.style.left=p.x+"px"; b.style.top=p.y+"px";
+    });
+  };
+  window.addEventListener("resize",ajustar);
+  window.addEventListener("orientationchange",()=>setTimeout(ajustar,250));
+})();
 (function dadoBind(){
   function bind(){
     const btn=document.getElementById("dadoBtn"), panel=document.getElementById("dadoPanel"), head=document.getElementById("dadoHead");
@@ -2689,7 +2712,8 @@ function dadoFechar(){
     btn.dataset.bound="1";
     D.ui=D.ui||{};
     if(D.ui.dadoBtn&&D.ui.dadoBtn.x!=null){
-      btn.style.left=D.ui.dadoBtn.x+"px"; btn.style.top=D.ui.dadoBtn.y+"px";
+      const pIni=uiPosDentroDaTela(btn,D.ui.dadoBtn);
+      btn.style.left=pIni.x+"px"; btn.style.top=pIni.y+"px";
       btn.style.right="auto"; btn.style.bottom="auto";
     }
     const pos=e=>{ const t=(e.touches&&e.touches[0])||e; return [t.clientX,t.clientY]; };
@@ -3097,7 +3121,8 @@ function libFechar(){
     btn.dataset.bound="1";
     D.ui=D.ui||{};
     if(D.ui.libBtn&&D.ui.libBtn.x!=null){
-      btn.style.left=D.ui.libBtn.x+"px"; btn.style.top=D.ui.libBtn.y+"px";
+      const pIni=uiPosDentroDaTela(btn,D.ui.libBtn);
+      btn.style.left=pIni.x+"px"; btn.style.top=pIni.y+"px";
       btn.style.right="auto"; btn.style.bottom="auto";
     }
     const pos=e=>{ const t=(e.touches&&e.touches[0])||e; return [t.clientX,t.clientY]; };
